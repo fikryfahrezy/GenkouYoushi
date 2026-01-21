@@ -22,3 +22,4 @@ https://kanji-api.fahrezy.work/docs
 ## Attribution
 
 - [kanjivg.tagaini.net](https://kanjivg.tagaini.net) / [KanjiVG/kanjivg](https://github.com/KanjiVG/kanjivg)
+- [SVGKit/SVGKit](https://github.com/SVGKit/SVGKit)
