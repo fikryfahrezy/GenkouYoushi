@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct GenkouYoushiApp: App {
-    @State private var modelData = ModelData(kanjiAPIClient: KanjiAPIClient(baseURL: URL(string: "https://kanji-api.fahrezy.work")!))
+    @State private var modelData = ModelData()
     
     var body: some Scene {
         DocumentGroup(newDocument: GenkouYoushiDocument()) { file in
