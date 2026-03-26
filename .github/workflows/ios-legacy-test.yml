@@ -1,16 +1,16 @@
-name: Test
+name: iOS Legacy Test
 
 on:
   push:
     branches:
       - "**"
     paths:
-      - '.github/workflows/ios-test.yml'
-      - 'ios/**'
+      - '.github/workflows/ios-legacy-test.yml'
+      - 'ios-legacy/**'
 
 defaults:
   run:
-    working-directory: ./ios
+    working-directory: ./ios-legacy
 
 jobs:
   test:
