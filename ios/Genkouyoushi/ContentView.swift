@@ -3,17 +3,14 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State private var workspaceModel = PracticeWorkspaceModel()
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
+        PracticeWorkspaceView(model: workspaceModel)
     }
 }
 
 #Preview {
     ContentView()
+        .frame(width: 1_366, height: 1_024)
 }
