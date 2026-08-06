@@ -7,6 +7,9 @@ struct ContentView: View {
 
     var body: some View {
         PracticeWorkspaceView(model: workspaceModel)
+            .task {
+                await workspaceModel.loadDocuments()
+            }
     }
 }
 

@@ -112,3 +112,15 @@ struct PaperToolButton: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
+
+struct PaperActionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13, weight: .semibold, design: .rounded))
+            .foregroundStyle(PaperPalette.paper)
+            .padding(.horizontal, 14)
+            .frame(height: 38)
+            .background(PaperPalette.indigo.opacity(configuration.isPressed ? 0.78 : 1))
+            .overlay { Rectangle().stroke(PaperPalette.sumi.opacity(0.18), lineWidth: 1) }
+    }
+}

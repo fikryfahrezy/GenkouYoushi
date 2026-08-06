@@ -35,7 +35,7 @@ struct ManuscriptPaperView: View {
 
                     Spacer()
 
-                    Text("400 字 ・ 縦書き")
+                    Text("\(grid.characterCapacity) 字 ・ 縦書き")
                         .font(.system(size: 9, weight: .medium, design: .rounded))
                 }
                 .foregroundStyle(PaperPalette.grid.opacity(0.8))
@@ -62,7 +62,7 @@ struct ManuscriptPaperView: View {
         }
         .shadow(color: PaperPalette.paperShadow, radius: 24, y: 12)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Four hundred character vertical manuscript practice paper")
+        .accessibilityLabel("\(grid.characterCapacity) character vertical manuscript practice paper")
     }
 
     private var paperFibers: some View {
