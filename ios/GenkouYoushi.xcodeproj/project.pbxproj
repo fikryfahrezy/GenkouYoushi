@@ -7,13 +7,13 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		EE80A2752F752EA900D7CE28 /* Genkouyoushi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Genkouyoushi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EE80A2752F752EA900D7CE28 /* GenkouYoushi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GenkouYoushi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		EE80A2772F752EA900D7CE28 /* Genkouyoushi */ = {
+		EE80A2772F752EA900D7CE28 /* GenkouYoushi */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Genkouyoushi;
+			path = GenkouYoushi;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -32,7 +32,7 @@
 		EE80A26C2F752EA900D7CE28 = {
 			isa = PBXGroup;
 			children = (
-				EE80A2772F752EA900D7CE28 /* Genkouyoushi */,
+				EE80A2772F752EA900D7CE28 /* GenkouYoushi */,
 				EE80A2762F752EA900D7CE28 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -40,7 +40,7 @@
 		EE80A2762F752EA900D7CE28 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				EE80A2752F752EA900D7CE28 /* Genkouyoushi.app */,
+				EE80A2752F752EA900D7CE28 /* GenkouYoushi.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,9 +48,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		EE80A2742F752EA900D7CE28 /* Genkouyoushi */ = {
+		EE80A2742F752EA900D7CE28 /* GenkouYoushi */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = EE80A2802F752EAB00D7CE28 /* Build configuration list for PBXNativeTarget "Genkouyoushi" */;
+			buildConfigurationList = EE80A2802F752EAB00D7CE28 /* Build configuration list for PBXNativeTarget "GenkouYoushi" */;
 			buildPhases = (
 				EE80A2712F752EA900D7CE28 /* Sources */,
 				EE80A2722F752EA900D7CE28 /* Frameworks */,
@@ -61,13 +61,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				EE80A2772F752EA900D7CE28 /* Genkouyoushi */,
+				EE80A2772F752EA900D7CE28 /* GenkouYoushi */,
 			);
-			name = Genkouyoushi;
+			name = GenkouYoushi;
 			packageProductDependencies = (
 			);
 			productName = Genkouyoushi;
-			productReference = EE80A2752F752EA900D7CE28 /* Genkouyoushi.app */;
+			productReference = EE80A2752F752EA900D7CE28 /* GenkouYoushi.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -85,7 +85,7 @@
 					};
 				};
 			};
-			buildConfigurationList = EE80A2702F752EA900D7CE28 /* Build configuration list for PBXProject "Genkouyoushi" */;
+			buildConfigurationList = EE80A2702F752EA900D7CE28 /* Build configuration list for PBXProject "GenkouYoushi" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -99,7 +99,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				EE80A2742F752EA900D7CE28 /* Genkouyoushi */,
+				EE80A2742F752EA900D7CE28 /* GenkouYoushi */,
 			);
 		};
 /* End PBXProject section */
@@ -266,7 +266,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fikryfahrezy.Genkouyoushi;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fikryfahrezy.GenkouYoushi;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -298,7 +298,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fikryfahrezy.Genkouyoushi;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fikryfahrezy.GenkouYoushi;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -313,7 +313,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		EE80A2702F752EA900D7CE28 /* Build configuration list for PBXProject "Genkouyoushi" */ = {
+		EE80A2702F752EA900D7CE28 /* Build configuration list for PBXProject "GenkouYoushi" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				EE80A27E2F752EAB00D7CE28 /* Debug */,
@@ -322,7 +322,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		EE80A2802F752EAB00D7CE28 /* Build configuration list for PBXNativeTarget "Genkouyoushi" */ = {
+		EE80A2802F752EAB00D7CE28 /* Build configuration list for PBXNativeTarget "GenkouYoushi" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				EE80A2812F752EAB00D7CE28 /* Debug */,
