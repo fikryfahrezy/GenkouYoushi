@@ -124,14 +124,9 @@ final class PracticeWorkspaceModel {
         scheduleSave()
     }
 
-    func selectGrid(_ newGrid: ManuscriptGrid) {
-        grid = newGrid
-        scheduleSave()
-    }
-
-    func createDocument() {
+    func createDocument(grid: ManuscriptGrid = .standard400) {
         saveTask?.cancel()
-        let newDocument = PracticeDocument.new()
+        let newDocument = PracticeDocument.new(grid: grid)
         apply(newDocument)
         documents.insert(newDocument, at: 0)
         selectedSection = .practice
@@ -231,8 +226,6 @@ final class PracticeWorkspaceModel {
 enum WorkspaceSection: String, CaseIterable, Identifiable {
     case practice
     case library
-    case templates
-    case settings
 
     var id: Self { self }
 
@@ -240,8 +233,6 @@ enum WorkspaceSection: String, CaseIterable, Identifiable {
         switch self {
         case .practice: "Practice"
         case .library: "Library"
-        case .templates: "Paper"
-        case .settings: "Settings"
         }
     }
 
@@ -249,8 +240,6 @@ enum WorkspaceSection: String, CaseIterable, Identifiable {
         switch self {
         case .practice: "pencil.and.outline"
         case .library: "books.vertical.fill"
-        case .templates: "square.grid.3x3.fill"
-        case .settings: "slider.horizontal.3"
         }
     }
 }

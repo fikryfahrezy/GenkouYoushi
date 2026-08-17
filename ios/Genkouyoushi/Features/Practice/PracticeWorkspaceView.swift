@@ -7,21 +7,57 @@ struct PracticeWorkspaceView: View {
     @State private var exportDocument: PDFExportDocument?
     @State private var isExporting = false
     @State private var selectedPhoto: PhotosPickerItem?
+    @State private var isReferencePanelPresented = false
+    @State private var isCreatingSheet = false
+    @State private var paperScale: CGFloat = 1
+    @State private var paperOffset = CGSize.zero
+    @State private var isManipulatingPaper = false
+    @FocusState private var isKanjiFieldFocused: Bool
 
     var body: some View {
         GeometryReader { geometry in
-            HStack(spacing: 12) {
-                navigationRail
-                    .frame(width: 82)
+            let showsInlineReferencePanel = model.selectedSection == .practice && geometry.size.width >= 1_080
+            let canToggleReferencePanel = model.selectedSection == .practice && !showsInlineReferencePanel
 
-                sectionContent
+            ZStack(alignment: .trailing) {
+                HStack(spacing: 12) {
+                    navigationRail
+                        .frame(width: 82)
 
-                if model.selectedSection == .practice, geometry.size.width >= 1_080 {
-                    referencePanel
-                        .frame(width: 264)
+                    sectionContent(canToggleReferencePanel: canToggleReferencePanel)
+
+                    if showsInlineReferencePanel {
+                        referencePanel
+                            .frame(width: 264)
+                    }
+                }
+                .padding(12)
+                .zIndex(0)
+
+                if canToggleReferencePanel, isReferencePanelPresented {
+                    Color.black.opacity(0.16)
+                        .ignoresSafeArea()
+                        .transition(.identity)
+                        .zIndex(1)
+                        .onTapGesture {
+                            withAnimation(.snappy) {
+                                isReferencePanelPresented = false
+                            }
+                        }
+
+                    referenceDrawer
+                        .frame(width: min(320, max(240, geometry.size.width - 138)))
+                        .padding(12)
+                        .transition(.move(edge: .trailing))
+                        .zIndex(2)
                 }
             }
-            .padding(12)
+            .animation(.snappy, value: isReferencePanelPresented)
+            .onChange(of: showsInlineReferencePanel) { _, isInline in
+                if isInline {
+                    isReferencePanelPresented = false
+                }
+            }
         }
         .background {
             LinearGradient(
@@ -32,6 +68,7 @@ struct PracticeWorkspaceView: View {
             .ignoresSafeArea()
         }
         .foregroundStyle(PaperPalette.sumi)
+        .ignoresSafeArea(.keyboard)
         .fileExporter(
             isPresented: $isExporting,
             document: exportDocument,
@@ -49,24 +86,15 @@ struct PracticeWorkspaceView: View {
             seal
                 .padding(.bottom, 10)
 
-            ForEach(WorkspaceSection.allCases.filter { $0 != .settings }) { section in
+            ForEach(WorkspaceSection.allCases) { section in
                 PaperIconButton(
                     title: section.title,
                     systemImage: section.systemImage,
                     isSelected: model.selectedSection == section
                 ) {
                     model.selectedSection = section
+                    isCreatingSheet = false
                 }
-            }
-
-            Spacer()
-
-            PaperIconButton(
-                title: WorkspaceSection.settings.title,
-                systemImage: WorkspaceSection.settings.systemImage,
-                isSelected: model.selectedSection == .settings
-            ) {
-                model.selectedSection = .settings
             }
         }
         .padding(8)
@@ -91,29 +119,25 @@ struct PracticeWorkspaceView: View {
     }
 
     @ViewBuilder
-    private var sectionContent: some View {
+    private func sectionContent(canToggleReferencePanel: Bool) -> some View {
         switch model.selectedSection {
         case .practice:
-            practiceWorkspace
+            practiceWorkspace(canToggleReferencePanel: canToggleReferencePanel)
         case .library:
             libraryView
-        case .templates:
-            templatesView
-        case .settings:
-            settingsView
         }
     }
 
-    private var practiceWorkspace: some View {
+    private func practiceWorkspace(canToggleReferencePanel: Bool) -> some View {
         VStack(spacing: 0) {
-            workspaceHeader
+            workspaceHeader(canToggleReferencePanel: canToggleReferencePanel)
 
             GeometryReader { geometry in
                 let availableWidth = max(geometry.size.width - 48, 100)
                 let availableHeight = max(geometry.size.height - 36, 100)
-                let paperSize = fittedPaperSize(width: availableWidth, height: availableHeight)
+                let paperSize = fittedPaperSize(width: availableWidth, height: availableHeight, grid: model.grid)
 
-                ZStack(alignment: .bottom) {
+                ZStack {
                     Color.clear
 
                     ZStack {
@@ -123,29 +147,34 @@ struct PracticeWorkspaceView: View {
                             showsGuides: model.showsGuides
                         )
 
-                        drawingSurface
+                        drawingSurface(viewportSize: geometry.size, paperSize: paperSize)
                     }
                     .frame(width: paperSize.width, height: paperSize.height)
-
+                    .scaleEffect(paperScale)
+                    .offset(paperOffset)
+                }
+                .overlay(alignment: .bottom) {
                     toolShelf
                         .padding(.bottom, 14)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+            }
+            .onChange(of: model.activeDocumentID) { _, _ in
+                resetPaperViewport()
+            }
+            .onChange(of: model.grid) { _, _ in
+                resetPaperViewport()
             }
         }
         .background(PaperPalette.sumi.opacity(0.035), in: RoundedRectangle(cornerRadius: PaperRadius.panel))
         .clipShape(RoundedRectangle(cornerRadius: PaperRadius.panel))
     }
 
-    private var workspaceHeader: some View {
+    private func workspaceHeader(canToggleReferencePanel: Bool) -> some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Writing practice")
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                Text("\(model.grid.characterCapacity)-character vertical manuscript")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundStyle(PaperPalette.faintSumi)
-            }
+            Text("Writing practice")
+                .font(.system(size: 17, weight: .bold, design: .rounded))
 
             Spacer()
 
@@ -159,6 +188,14 @@ struct PracticeWorkspaceView: View {
                 headerButton(systemImage: "square.and.arrow.up", label: "Export") {
                     exportDocument = model.exportPDF()
                     isExporting = true
+                }
+
+                if canToggleReferencePanel {
+                    headerButton(systemImage: "sidebar.right", label: "Toggle reference panel") {
+                        withAnimation(.snappy) {
+                            isReferencePanelPresented.toggle()
+                        }
+                    }
                 }
             }
 
@@ -179,6 +216,42 @@ struct PracticeWorkspaceView: View {
             Rectangle()
                 .fill(PaperPalette.sumi.opacity(0.07))
                 .frame(height: 1)
+        }
+    }
+
+    private var referenceDrawer: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("Reference")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+
+                Spacer()
+
+                Button {
+                    withAnimation(.snappy) {
+                        isReferencePanelPresented = false
+                    }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .frame(width: 30, height: 30)
+                        .background(PaperPalette.paper.opacity(0.72), in: RoundedRectangle(cornerRadius: PaperRadius.control))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close reference panel")
+            }
+
+            referencePanel
+        }
+        .padding(12)
+        .background {
+            RoundedRectangle(cornerRadius: PaperRadius.panel)
+                .fill(PaperPalette.canvas.opacity(0.98))
+                .shadow(color: PaperPalette.paperShadow, radius: 18, y: 8)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: PaperRadius.panel)
+                .stroke(PaperPalette.sumi.opacity(0.12), lineWidth: 1)
         }
     }
 
@@ -231,7 +304,7 @@ struct PracticeWorkspaceView: View {
             PaperPanel {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text("TODAY'S KANJI")
+                        Text("KANJI")
                             .font(.system(size: 10, weight: .bold, design: .rounded))
                             .tracking(1.5)
                             .foregroundStyle(PaperPalette.faintSumi)
@@ -262,6 +335,7 @@ struct PracticeWorkspaceView: View {
 
                     HStack(spacing: 6) {
                         TextField("Kanji", text: $model.kanjiQuery)
+                            .focused($isKanjiFieldFocused)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .font(.system(size: 18, weight: .semibold, design: .serif))
@@ -271,9 +345,13 @@ struct PracticeWorkspaceView: View {
                             .overlay {
                                 Rectangle().stroke(PaperPalette.sumi.opacity(0.16), lineWidth: 1)
                             }
-                            .onSubmit { Task { await model.lookupKanji() } }
+                            .onSubmit {
+                                isKanjiFieldFocused = false
+                                Task { await model.lookupKanji() }
+                            }
 
                         Button {
+                            isKanjiFieldFocused = false
                             Task { await model.lookupKanji() }
                         } label: {
                             Image(systemName: model.isLoadingKanji ? "hourglass" : "arrow.right")
@@ -358,7 +436,6 @@ struct PracticeWorkspaceView: View {
 
                     sessionRow(label: "Paper", value: "\(model.grid.columns) × \(model.grid.rows)")
                     sessionRow(label: "Capacity", value: "\(model.grid.characterCapacity) 字")
-                    sessionRow(label: "Direction", value: "Vertical")
                 }
             }
 
@@ -366,7 +443,7 @@ struct PracticeWorkspaceView: View {
         }
     }
 
-    private var drawingSurface: some View {
+    private func drawingSurface(viewportSize: CGSize, paperSize: CGSize) -> some View {
         VStack(spacing: ManuscriptPaperView.headerSpacing) {
             Color.clear
                 .frame(height: ManuscriptPaperView.headerHeight)
@@ -376,10 +453,18 @@ struct PracticeWorkspaceView: View {
                 selectedTool: model.selectedTool,
                 clearRequestID: model.clearRequestID,
                 undoRequestID: model.undoRequestID,
-                redoRequestID: model.redoRequestID
-            ) { data, size in
-                model.drawingDidChange(data: data, canvasSize: size)
-            }
+                redoRequestID: model.redoRequestID,
+                isViewportGestureActive: $isManipulatingPaper,
+                onViewportPan: { translation in
+                panPaper(by: translation, viewportSize: viewportSize, paperSize: paperSize)
+                },
+                onViewportZoom: { scaleDelta in
+                zoomPaper(by: scaleDelta, viewportSize: viewportSize, paperSize: paperSize)
+                },
+                onDrawingChange: { data, size in
+                    model.drawingDidChange(data: data, canvasSize: size)
+                }
+            )
             .aspectRatio(ManuscriptPaperView.gridAspectRatio(for: model.grid), contentMode: .fit)
 
             Spacer(minLength: 0)
@@ -388,12 +473,21 @@ struct PracticeWorkspaceView: View {
         .padding(ManuscriptPaperView.gridInset)
     }
 
+    @ViewBuilder
     private var libraryView: some View {
-        sectionPanel(title: "Practice library", subtitle: "Your editable manuscript sheets") {
+        if isCreatingSheet {
+            newSheetSettingsView
+        } else {
+            libraryListView
+        }
+    }
+
+    private var libraryListView: some View {
+        sectionPanel(title: "Practice library") {
             HStack {
                 Spacer()
                 Button("New sheet", systemImage: "plus") {
-                    model.createDocument()
+                    isCreatingSheet = true
                 }
                 .buttonStyle(PaperActionButtonStyle())
             }
@@ -417,47 +511,42 @@ struct PracticeWorkspaceView: View {
         }
     }
 
-    private var templatesView: some View {
-        sectionPanel(title: "Paper", subtitle: "Choose the manuscript capacity") {
-            HStack(alignment: .top, spacing: 14) {
-                templateCard(title: "Standard", detail: "20 × 20 ・ 400 characters", grid: .standard400)
-                templateCard(title: "Compact", detail: "10 × 20 ・ 200 characters", grid: .compact200)
+    private var newSheetSettingsView: some View {
+        sectionPanel(title: "New sheet", subtitle: "Choose the manuscript paper size") {
+            HStack {
+                Button("Back", systemImage: "chevron.left") {
+                    isCreatingSheet = false
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+
                 Spacer()
             }
-            Spacer()
-        }
-    }
 
-    private var settingsView: some View {
-        sectionPanel(title: "Settings", subtitle: "A quiet workspace for focused handwriting") {
-            PaperPanel {
-                VStack(alignment: .leading, spacing: 14) {
-                    settingRow("Storage", value: "On-device, automatic")
-                    Divider()
-                    settingRow("Writing", value: "Apple Pencil + touch")
-                    Divider()
-                    settingRow("Export", value: "PDF manuscript")
-                    Divider()
-                    settingRow("Compatibility", value: "iPad only ・ Swift 6")
-                }
+            HStack(alignment: .top, spacing: 14) {
+                newSheetCard(title: "Standard", detail: "20 × 20 ・ 400 characters", grid: .standard400)
+                newSheetCard(title: "Compact", detail: "10 × 20 ・ 200 characters", grid: .compact200)
+                Spacer()
             }
-            .frame(maxWidth: 520)
+
             Spacer()
         }
     }
 
     private func sectionPanel<Content: View>(
         title: String,
-        subtitle: String,
+        subtitle: String = "",
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                Text(subtitle)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(PaperPalette.faintSumi)
+                if !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(PaperPalette.faintSumi)
+                }
             }
             content()
         }
@@ -468,6 +557,7 @@ struct PracticeWorkspaceView: View {
 
     private func documentCard(_ document: PracticeDocument) -> some View {
         Button {
+            isCreatingSheet = false
             model.open(document)
         } label: {
             VStack(alignment: .leading, spacing: 12) {
@@ -498,10 +588,10 @@ struct PracticeWorkspaceView: View {
         .buttonStyle(.plain)
     }
 
-    private func templateCard(title: String, detail: String, grid: ManuscriptGrid) -> some View {
+    private func newSheetCard(title: String, detail: String, grid: ManuscriptGrid) -> some View {
         Button {
-            model.selectGrid(grid)
-            model.selectedSection = .practice
+            isCreatingSheet = false
+            model.createDocument(grid: grid)
         } label: {
             VStack(alignment: .leading, spacing: 12) {
                 Image(systemName: "square.grid.3x3")
@@ -515,12 +605,9 @@ struct PracticeWorkspaceView: View {
             }
             .padding(18)
             .frame(width: 250, height: 150, alignment: .topLeading)
-            .background(model.grid == grid ? PaperPalette.vermilionSoft : PaperPalette.paper)
+            .background(PaperPalette.paper)
             .overlay {
-                Rectangle().stroke(
-                    model.grid == grid ? PaperPalette.vermilion : PaperPalette.sumi.opacity(0.12),
-                    lineWidth: model.grid == grid ? 2 : 1
-                )
+                Rectangle().stroke(PaperPalette.sumi.opacity(0.12), lineWidth: 1)
             }
         }
         .buttonStyle(.plain)
@@ -538,15 +625,6 @@ struct PracticeWorkspaceView: View {
         .accessibilityLabel(label)
     }
 
-    private func settingRow(_ label: String, value: String) -> some View {
-        HStack {
-            Text(label).fontWeight(.semibold)
-            Spacer()
-            Text(value).foregroundStyle(PaperPalette.faintSumi)
-        }
-        .font(.system(size: 13, design: .rounded))
-    }
-
     private func sessionRow(label: String, value: String) -> some View {
         HStack {
             Text(label)
@@ -558,15 +636,63 @@ struct PracticeWorkspaceView: View {
         .font(.system(size: 12, design: .rounded))
     }
 
-    private func fittedPaperSize(width: CGFloat, height: CGFloat) -> CGSize {
-        let aspectRatio: CGFloat = 0.707
-        let widthFromHeight = height * aspectRatio
+    private func fittedPaperSize(width: CGFloat, height: CGFloat, grid: ManuscriptGrid) -> CGSize {
+        let horizontalInset = ManuscriptPaperView.gridInset * 2
+        let verticalInset = ManuscriptPaperView.gridInset * 2
+        let headerHeight = ManuscriptPaperView.headerHeight + ManuscriptPaperView.headerSpacing
+        let gridAspectRatio = ManuscriptPaperView.gridAspectRatio(for: grid)
+        let minimumPaperWidth = horizontalInset + 40
+        let minimumPaperHeight = verticalInset + headerHeight + 40
 
-        if widthFromHeight <= width {
-            return CGSize(width: widthFromHeight, height: height)
+        func paperHeight(for paperWidth: CGFloat) -> CGFloat {
+            let gridWidth = max(paperWidth - horizontalInset, 40)
+            return verticalInset + headerHeight + gridWidth / gridAspectRatio
         }
 
-        return CGSize(width: width, height: width / aspectRatio)
+        let heightFromAvailableWidth = paperHeight(for: width)
+        if heightFromAvailableWidth <= height {
+            return CGSize(width: width, height: heightFromAvailableWidth)
+        }
+
+        let gridWidthFromAvailableHeight = max(height - verticalInset - headerHeight, 40) * gridAspectRatio
+        return CGSize(
+            width: max(min(gridWidthFromAvailableHeight + horizontalInset, width), minimumPaperWidth),
+            height: max(height, minimumPaperHeight)
+        )
+    }
+
+    private func panPaper(by translation: CGSize, viewportSize: CGSize, paperSize: CGSize) {
+        let nextOffset = CGSize(
+            width: paperOffset.width + translation.width,
+            height: paperOffset.height + translation.height
+        )
+        paperOffset = clampedPaperOffset(nextOffset, scale: paperScale, viewportSize: viewportSize, paperSize: paperSize)
+    }
+
+    private func zoomPaper(by scaleDelta: CGFloat, viewportSize: CGSize, paperSize: CGSize) {
+        let nextScale = min(max(paperScale * scaleDelta, 1), 3)
+        paperScale = nextScale
+        paperOffset = clampedPaperOffset(paperOffset, scale: nextScale, viewportSize: viewportSize, paperSize: paperSize)
+    }
+
+    private func resetPaperViewport() {
+        paperScale = 1
+        paperOffset = .zero
+    }
+
+    private func clampedPaperOffset(
+        _ offset: CGSize,
+        scale: CGFloat,
+        viewportSize: CGSize,
+        paperSize: CGSize
+    ) -> CGSize {
+        let horizontalLimit = max((paperSize.width * scale - viewportSize.width) / 2, 0)
+        let verticalLimit = max((paperSize.height * scale - viewportSize.height) / 2, 0)
+
+        return CGSize(
+            width: min(max(offset.width, -horizontalLimit), horizontalLimit),
+            height: min(max(offset.height, -verticalLimit), verticalLimit)
+        )
     }
 }
 

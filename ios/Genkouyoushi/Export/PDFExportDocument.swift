@@ -41,18 +41,25 @@ enum ManuscriptPDFRenderer {
             let gapRatio = ManuscriptPaperView.columnGapRatio
             let widthUnits = CGFloat(document.grid.columns)
                 + CGFloat(max(document.grid.columns - 1, 0)) * gapRatio
-            let cell = (page.width - margin * 2) / widthUnits
+            let availableWidth = page.width - margin * 2
+            let availableHeight = page.height - margin * 2 - headerHeight
+            let cell = min(
+                availableWidth / widthUnits,
+                availableHeight / CGFloat(document.grid.rows)
+            )
             let gap = cell * gapRatio
+            let gridWidth = CGFloat(document.grid.columns) * cell
+                + CGFloat(max(document.grid.columns - 1, 0)) * gap
             let gridHeight = cell * CGFloat(document.grid.rows)
             let gridRect = CGRect(
-                x: margin,
+                x: (page.width - gridWidth) / 2,
                 y: margin + headerHeight,
-                width: page.width - margin * 2,
+                width: gridWidth,
                 height: gridHeight
             )
 
             drawGrid(document: document, in: gridRect, cell: cell, gap: gap, context: cg)
-            drawHeader(document: document, page: page, margin: margin)
+            drawHeader(document: document, gridRect: gridRect, headerY: margin)
             drawInk(document: document, in: gridRect)
         }
     }
@@ -96,16 +103,19 @@ enum ManuscriptPDFRenderer {
         context.restoreGState()
     }
 
-    private static func drawHeader(document: PracticeDocument, page: CGRect, margin: CGFloat) {
+    private static func drawHeader(document: PracticeDocument, gridRect: CGRect, headerY: CGFloat) {
         let attributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 9, weight: .semibold),
             .foregroundColor: UIColor(red: 0.42, green: 0.53, blue: 0.43, alpha: 0.9)
         ]
-        NSString(string: "原稿用紙").draw(at: CGPoint(x: margin, y: margin), withAttributes: attributes)
+        NSString(string: "原稿用紙").draw(
+            at: CGPoint(x: gridRect.minX, y: headerY),
+            withAttributes: attributes
+        )
         let capacity = "\(document.grid.characterCapacity) 字 ・ 縦書き" as NSString
         let width = capacity.size(withAttributes: attributes).width
         capacity.draw(
-            at: CGPoint(x: page.width - margin - width, y: margin),
+            at: CGPoint(x: gridRect.maxX - width, y: headerY),
             withAttributes: attributes
         )
     }

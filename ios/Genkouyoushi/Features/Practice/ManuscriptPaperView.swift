@@ -41,11 +41,21 @@ struct ManuscriptPaperView: View {
                 .foregroundStyle(PaperPalette.grid.opacity(0.8))
                 .frame(height: Self.headerHeight)
 
-                Canvas { context, size in
-                    drawGrid(context: &context, size: size)
+                ZStack {
+                    Canvas { context, size in
+                        drawGrid(context: &context, size: size)
 
-                    if showsGuides {
-                        drawGuides(context: &context, size: size)
+                        if showsGuides, prompt.strokeOrderSVGs.isEmpty {
+                            drawTextGuides(context: &context, size: size)
+                        }
+                    }
+
+                    if showsGuides, !prompt.strokeOrderSVGs.isEmpty {
+                        StrokeOrderGuideView(
+                            grid: grid,
+                            strokeOrderSVGs: prompt.strokeOrderSVGs
+                        )
+                        .allowsHitTesting(false)
                     }
                 }
                 .aspectRatio(Self.gridAspectRatio(for: grid), contentMode: .fit)
@@ -133,7 +143,7 @@ struct ManuscriptPaperView: View {
         )
     }
 
-    private func drawGuides(context: inout GraphicsContext, size: CGSize) {
+    private func drawTextGuides(context: inout GraphicsContext, size: CGSize) {
         let layout = gridLayout(in: size)
         let fontSize = layout.cellSize * 0.68
         let opacities = [0.3, 0.21, 0.13]
@@ -159,6 +169,70 @@ struct ManuscriptPaperView: View {
         let widthUnits = columns + CGFloat(max(grid.columns - 1, 0)) * Self.columnGapRatio
         let cellSize = min(size.width / widthUnits, size.height / rows)
         let columnGap = cellSize * Self.columnGapRatio
+        let gridWidth = columns * cellSize + CGFloat(max(grid.columns - 1, 0)) * columnGap
+        let gridHeight = rows * cellSize
+
+        return GridLayout(
+            cellSize: cellSize,
+            columnGap: columnGap,
+            origin: CGPoint(
+                x: (size.width - gridWidth) / 2,
+                y: (size.height - gridHeight) / 2
+            )
+        )
+    }
+
+    private struct GridLayout {
+        let cellSize: CGFloat
+        let columnGap: CGFloat
+        let origin: CGPoint
+    }
+}
+
+private struct StrokeOrderGuideView: View {
+    let grid: ManuscriptGrid
+    let strokeOrderSVGs: [Data]
+
+    var body: some View {
+        GeometryReader { geometry in
+            let layout = gridLayout(in: geometry.size)
+            let visibleStrokes = Array(strokeOrderSVGs.prefix(grid.characterCapacity))
+
+            ZStack(alignment: .topLeading) {
+                ForEach(visibleStrokes.indices, id: \.self) { index in
+                    let position = cellPosition(for: index)
+                    let origin = CGPoint(
+                        x: layout.origin.x + CGFloat(position.column) * (layout.cellSize + layout.columnGap),
+                        y: layout.origin.y + CGFloat(position.row) * layout.cellSize
+                    )
+
+                    SVGReferenceView(data: visibleStrokes[index])
+                        .padding(layout.cellSize * 0.08)
+                        .frame(width: layout.cellSize, height: layout.cellSize)
+                        .opacity(0.34)
+                        .position(
+                            x: origin.x + layout.cellSize / 2,
+                            y: origin.y + layout.cellSize / 2
+                        )
+                }
+            }
+        }
+    }
+
+    private func cellPosition(for index: Int) -> (column: Int, row: Int) {
+        let columnOffset = index / grid.rows
+        return (
+            column: max(grid.columns - 1 - columnOffset, 0),
+            row: index % grid.rows
+        )
+    }
+
+    private func gridLayout(in size: CGSize) -> GridLayout {
+        let columns = CGFloat(grid.columns)
+        let rows = CGFloat(grid.rows)
+        let widthUnits = columns + CGFloat(max(grid.columns - 1, 0)) * ManuscriptPaperView.columnGapRatio
+        let cellSize = min(size.width / widthUnits, size.height / rows)
+        let columnGap = cellSize * ManuscriptPaperView.columnGapRatio
         let gridWidth = columns * cellSize + CGFloat(max(grid.columns - 1, 0)) * columnGap
         let gridHeight = rows * cellSize
 
