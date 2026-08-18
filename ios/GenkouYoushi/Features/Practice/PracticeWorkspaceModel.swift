@@ -18,6 +18,7 @@ final class PracticeWorkspaceModel {
     var drawingCanvasSize = CGSize.zero
     var documents: [PracticeDocument] = []
     var activeDocumentID: UUID
+    var isLoadingDocuments = true
     var kanjiQuery = "永"
     var isLoadingKanji = false
     var isRecognizingKanji = false
@@ -30,6 +31,7 @@ final class PracticeWorkspaceModel {
     @ObservationIgnored private let recognizer: any KanjiRecognizing
     @ObservationIgnored private var saveTask: Task<Void, Never>?
     @ObservationIgnored private var createdAt: Date
+    @ObservationIgnored private var hasStartedLoadingDocuments = false
 
     init(
         kanjiService: any KanjiServing = KanjiAPIService(),
@@ -49,6 +51,10 @@ final class PracticeWorkspaceModel {
     }
 
     func loadDocuments() async {
+        guard !hasStartedLoadingDocuments else { return }
+        hasStartedLoadingDocuments = true
+        defer { isLoadingDocuments = false }
+
         do {
             let stored = try await repository.loadAll()
             if let first = stored.first {

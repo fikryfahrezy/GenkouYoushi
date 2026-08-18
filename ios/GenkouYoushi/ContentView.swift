@@ -6,10 +6,16 @@ struct ContentView: View {
     @State private var workspaceModel = PracticeWorkspaceModel()
 
     var body: some View {
-        PracticeWorkspaceView(model: workspaceModel)
-            .task {
-                await workspaceModel.loadDocuments()
+        Group {
+            if workspaceModel.isLoadingDocuments {
+                ProgressView("Loading practice sheets…")
+            } else {
+                PracticeWorkspaceView(model: workspaceModel)
             }
+        }
+        .task {
+            await workspaceModel.loadDocuments()
+        }
     }
 }
 
