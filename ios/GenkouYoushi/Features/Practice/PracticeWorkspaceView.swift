@@ -141,8 +141,6 @@ struct PracticeWorkspaceView: View {
 
                 VStack(spacing: 0) {
                     ZStack {
-                        Color.clear
-
                         ZStack {
                             ManuscriptPaperView(
                                 grid: model.grid,
@@ -156,9 +154,10 @@ struct PracticeWorkspaceView: View {
                         .scaleEffect(paperScale)
                         .offset(paperOffset)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+
                     toolShelf
-                        .frame(height: toolShelfHeight)
-                        .padding(.bottom, 10)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
@@ -270,6 +269,7 @@ struct PracticeWorkspaceView: View {
                 ) {
                     model.selectedTool = tool
                 }
+                .fixedSize(horizontal: true, vertical: false)
             }
 
             if model.selectedTool.supportsStrokeWidth {
@@ -277,28 +277,29 @@ struct PracticeWorkspaceView: View {
                     .frame(height: 24)
                     .padding(.horizontal, 3)
 
-                HStack(spacing: 6) {
-                    Image(systemName: "lineweight")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(PaperPalette.faintSumi)
+                Image(systemName: "lineweight")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(PaperPalette.faintSumi)
 
-                    Slider(
-                        value: $model.strokeWidth,
-                        in: WritingTool.minimumStrokeWidth...WritingTool.maximumStrokeWidth,
-                        step: 0.5
-                    )
-                    .frame(width: 112)
-                    .tint(PaperPalette.indigo)
-                    .accessibilityLabel("Writing size")
-                    .accessibilityValue("\(model.strokeWidth, specifier: "%.1f") points")
+                Slider(
+                    value: $model.strokeWidth,
+                    in: WritingTool.minimumStrokeWidth...WritingTool.maximumStrokeWidth,
+                    step: 0.5
+                )
+                .tint(PaperPalette.indigo)
+                .accessibilityLabel("Writing size")
+                .accessibilityValue("\(model.strokeWidth, specifier: "%.1f") points")
+                .frame(minWidth: 80, maxWidth: .infinity)
 
-                    Text("\(model.strokeWidth, specifier: "%.1f")")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(PaperPalette.faintSumi)
-                        .frame(width: 24, alignment: .trailing)
-                }
+                Text("\(model.strokeWidth, specifier: "%.1f")")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(PaperPalette.faintSumi)
+                    .lineLimit(1)
+                    .frame(width: 36, alignment: .trailing)
             }
+
+            Spacer(minLength: 12)
 
             Rectangle()
                 .fill(PaperPalette.sumi.opacity(0.12))
@@ -317,16 +318,14 @@ struct PracticeWorkspaceView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Clear drawing")
         }
-        .padding(6)
-        .background(
-            PaperPalette.paper.opacity(0.96),
-            in: RoundedRectangle(cornerRadius: PaperRadius.control)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: PaperRadius.control)
-                .stroke(PaperPalette.sumi.opacity(0.1), lineWidth: 1)
+        .padding(.horizontal, 18)
+        .frame(maxWidth: .infinity, minHeight: 68, maxHeight: 68, alignment: .leading)
+        .background(PaperPalette.paper.opacity(0.5))
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(PaperPalette.sumi.opacity(0.07))
+                .frame(height: 1)
         }
-        .shadow(color: PaperPalette.paperShadow, radius: 12, y: 5)
     }
 
     private var referencePanel: some View {
