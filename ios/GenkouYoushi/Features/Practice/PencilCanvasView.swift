@@ -63,12 +63,18 @@ struct PencilCanvasView: UIViewRepresentable {
 
         return switch selection {
         case .brush:
-            PKInkingTool(.fountainPen, color: UIColor(PaperPalette.sumi), width: cappedStrokeWidth)
+            PKInkingTool(.fountainPen, color: InkColor.sumi, width: cappedStrokeWidth)
         case .pencil:
-            PKInkingTool(.pencil, color: UIColor(PaperPalette.mutedSumi), width: cappedStrokeWidth)
+            PKInkingTool(.pencil, color: InkColor.mutedSumi, width: cappedStrokeWidth)
         case .eraser:
             PKEraserTool(.vector)
         }
+    }
+
+    /// PencilKit receives fixed UIKit colors so ink is unaffected by Light/Dark Mode.
+    private enum InkColor {
+        static let sumi = UIColor(red: 0.12, green: 0.11, blue: 0.09, alpha: 1)
+        static let mutedSumi = UIColor(red: 0.34, green: 0.32, blue: 0.27, alpha: 1)
     }
 
     @MainActor
