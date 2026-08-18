@@ -57,6 +57,13 @@ enum WritingTool: String, CaseIterable, Identifiable, Sendable {
 
     var id: Self { self }
 
+    static let minimumStrokeWidth: CGFloat = 1
+    static let maximumStrokeWidth: CGFloat = 12
+
+    var supportsStrokeWidth: Bool {
+        self != .eraser
+    }
+
     var title: String {
         switch self {
         case .brush: "Brush"

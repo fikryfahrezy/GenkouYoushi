@@ -134,29 +134,31 @@ struct PracticeWorkspaceView: View {
                 .zIndex(1)
 
             GeometryReader { geometry in
+                let toolShelfHeight: CGFloat = 68
                 let availableWidth = max(geometry.size.width - 48, 100)
-                let availableHeight = max(geometry.size.height - 36, 100)
+                let availableHeight = max(geometry.size.height - toolShelfHeight - 36, 100)
                 let paperSize = fittedPaperSize(width: availableWidth, height: availableHeight, grid: model.grid)
 
-                ZStack {
-                    Color.clear
-
+                VStack(spacing: 0) {
                     ZStack {
-                        ManuscriptPaperView(
-                            grid: model.grid,
-                            prompt: model.prompt,
-                            showsGuides: model.showsGuides
-                        )
+                        Color.clear
 
-                        drawingSurface(viewportSize: geometry.size, paperSize: paperSize)
+                        ZStack {
+                            ManuscriptPaperView(
+                                grid: model.grid,
+                                prompt: model.prompt,
+                                showsGuides: model.showsGuides
+                            )
+
+                            drawingSurface(viewportSize: geometry.size, paperSize: paperSize)
+                        }
+                        .frame(width: paperSize.width, height: paperSize.height)
+                        .scaleEffect(paperScale)
+                        .offset(paperOffset)
                     }
-                    .frame(width: paperSize.width, height: paperSize.height)
-                    .scaleEffect(paperScale)
-                    .offset(paperOffset)
-                }
-                .overlay(alignment: .bottom) {
                     toolShelf
-                        .padding(.bottom, 14)
+                        .frame(height: toolShelfHeight)
+                        .padding(.bottom, 10)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
@@ -267,6 +269,34 @@ struct PracticeWorkspaceView: View {
                     isSelected: model.selectedTool == tool
                 ) {
                     model.selectedTool = tool
+                }
+            }
+
+            if model.selectedTool.supportsStrokeWidth {
+                Divider()
+                    .frame(height: 24)
+                    .padding(.horizontal, 3)
+
+                HStack(spacing: 6) {
+                    Image(systemName: "lineweight")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(PaperPalette.faintSumi)
+
+                    Slider(
+                        value: $model.strokeWidth,
+                        in: WritingTool.minimumStrokeWidth...WritingTool.maximumStrokeWidth,
+                        step: 0.5
+                    )
+                    .frame(width: 112)
+                    .tint(PaperPalette.indigo)
+                    .accessibilityLabel("Writing size")
+                    .accessibilityValue("\(model.strokeWidth, specifier: "%.1f") points")
+
+                    Text("\(model.strokeWidth, specifier: "%.1f")")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(PaperPalette.faintSumi)
+                        .frame(width: 24, alignment: .trailing)
                 }
             }
 
@@ -450,6 +480,7 @@ struct PracticeWorkspaceView: View {
             PencilCanvasView(
                 drawingData: model.drawingData,
                 selectedTool: model.selectedTool,
+                strokeWidth: model.strokeWidth,
                 clearRequestID: model.clearRequestID,
                 undoRequestID: model.undoRequestID,
                 redoRequestID: model.redoRequestID,

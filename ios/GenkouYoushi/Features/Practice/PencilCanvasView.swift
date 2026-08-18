@@ -4,6 +4,7 @@ import SwiftUI
 struct PencilCanvasView: UIViewRepresentable {
     let drawingData: Data
     let selectedTool: WritingTool
+    let strokeWidth: CGFloat
     let clearRequestID: UUID
     let undoRequestID: UUID
     let redoRequestID: UUID
@@ -22,7 +23,7 @@ struct PencilCanvasView: UIViewRepresentable {
         canvasView.isOpaque = false
         canvasView.isScrollEnabled = false
         canvasView.drawingPolicy = .anyInput
-        canvasView.tool = tool(for: selectedTool)
+        canvasView.tool = tool(for: selectedTool, strokeWidth: strokeWidth)
         canvasView.delegate = context.coordinator
         context.coordinator.installViewportGestures(on: canvasView)
         canvasView.onTwoFingerTouchBegan = { canvasView in
@@ -37,7 +38,7 @@ struct PencilCanvasView: UIViewRepresentable {
 
     func updateUIView(_ canvasView: PKCanvasView, context: Context) {
         context.coordinator.parent = self
-        canvasView.tool = tool(for: selectedTool)
+        canvasView.tool = tool(for: selectedTool, strokeWidth: strokeWidth)
         context.coordinator.apply(drawingData, to: canvasView)
 
         if context.coordinator.lastClearRequestID != clearRequestID {
@@ -54,12 +55,17 @@ struct PencilCanvasView: UIViewRepresentable {
         }
     }
 
-    private func tool(for selection: WritingTool) -> any PKTool {
-        switch selection {
+    private func tool(for selection: WritingTool, strokeWidth: CGFloat) -> any PKTool {
+        let cappedStrokeWidth = min(
+            max(strokeWidth, WritingTool.minimumStrokeWidth),
+            WritingTool.maximumStrokeWidth
+        )
+
+        return switch selection {
         case .brush:
-            PKInkingTool(.fountainPen, color: UIColor(PaperPalette.sumi), width: 3.8)
+            PKInkingTool(.fountainPen, color: UIColor(PaperPalette.sumi), width: cappedStrokeWidth)
         case .pencil:
-            PKInkingTool(.pencil, color: UIColor(PaperPalette.mutedSumi), width: 2.2)
+            PKInkingTool(.pencil, color: UIColor(PaperPalette.mutedSumi), width: cappedStrokeWidth)
         case .eraser:
             PKEraserTool(.vector)
         }

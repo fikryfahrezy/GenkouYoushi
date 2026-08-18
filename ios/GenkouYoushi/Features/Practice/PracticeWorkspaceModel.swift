@@ -8,6 +8,7 @@ final class PracticeWorkspaceModel {
     var grid = ManuscriptGrid.standard400
     var prompt = PracticePrompt.sample
     var selectedTool: WritingTool = .brush
+    var strokeWidth: CGFloat = 3.8
     var showsGuides = true
     var selectedSection: WorkspaceSection = .practice
     var clearRequestID = UUID()
