@@ -28,8 +28,4 @@ https://kanji-api.fahrezy.work/docs
 
 ## Demo
 
-https://github.com/user-attachments/assets/27a945ab-ef4b-4aa1-8fe2-51ef3b014697
-
-https://github.com/user-attachments/assets/8ec60da1-ed04-43f0-97e1-5a168eac9427
-
-https://github.com/user-attachments/assets/a0c89bbf-a08b-40ea-bfe4-1582fc205396
+TBA
