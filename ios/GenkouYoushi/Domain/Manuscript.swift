@@ -13,14 +13,12 @@ nonisolated struct ManuscriptGrid: Codable, Equatable, Sendable {
 
 nonisolated struct PracticePrompt: Codable, Equatable, Sendable {
     var character: String
-    var note: String
     var strokeOrderSVGs: [Data]
 
     var strokeCount: Int { strokeOrderSVGs.count }
 
     static let sample = PracticePrompt(
         character: "永",
-        note: "Eternity ・ the eight principles of 永",
         strokeOrderSVGs: []
     )
 }

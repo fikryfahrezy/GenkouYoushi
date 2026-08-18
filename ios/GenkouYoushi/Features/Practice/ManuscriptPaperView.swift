@@ -196,7 +196,7 @@ private struct StrokeOrderGuideView: View {
     var body: some View {
         GeometryReader { geometry in
             let layout = gridLayout(in: geometry.size)
-            let visibleStrokes = Array(strokeOrderSVGs.prefix(grid.characterCapacity))
+            let visibleStrokes = Array(strokeOrderSVGs.reversed().prefix(grid.characterCapacity))
 
             ZStack(alignment: .topLeading) {
                 ForEach(visibleStrokes.indices, id: \.self) { index in

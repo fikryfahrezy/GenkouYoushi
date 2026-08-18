@@ -73,7 +73,6 @@ final class PracticeWorkspaceModel {
             )
             prompt.character = reference.character
             prompt.strokeOrderSVGs = reference.strokeOrderSVGs
-            prompt.note = "Stroke-order reference loaded"
             kanjiQuery = reference.character
             statusMessage = "Reference updated"
             scheduleSave()

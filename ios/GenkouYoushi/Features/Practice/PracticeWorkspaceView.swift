@@ -131,6 +131,7 @@ struct PracticeWorkspaceView: View {
     private func practiceWorkspace(canToggleReferencePanel: Bool) -> some View {
         VStack(spacing: 0) {
             workspaceHeader(canToggleReferencePanel: canToggleReferencePanel)
+                .zIndex(1)
 
             GeometryReader { geometry in
                 let availableWidth = max(geometry.size.width - 48, 100)
@@ -159,7 +160,9 @@ struct PracticeWorkspaceView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
+                .contentShape(Rectangle())
             }
+            .zIndex(0)
             .onChange(of: model.activeDocumentID) { _, _ in
                 resetPaperViewport()
             }
@@ -384,10 +387,6 @@ struct PracticeWorkspaceView: View {
                         }
                     }
 
-                    Text(model.prompt.note)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(PaperPalette.mutedSumi)
-
                     if let error = model.errorMessage {
                         Text(error)
                             .font(.system(size: 10, weight: .medium, design: .rounded))
@@ -410,7 +409,7 @@ struct PracticeWorkspaceView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Tracing guides")
                                     .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                Text("Fade through three cells")
+                                Text("Full kanji to first stroke")
                                     .font(.system(size: 10, design: .rounded))
                                     .foregroundStyle(PaperPalette.faintSumi)
                             }
