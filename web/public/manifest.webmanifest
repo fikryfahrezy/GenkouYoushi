@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "Genkou Youshi",
+  "short_name": "Genkou",
+  "description": "Japanese manuscript paper and kanji writing practice.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#e3ded0",
+  "theme_color": "#e3ded0",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
