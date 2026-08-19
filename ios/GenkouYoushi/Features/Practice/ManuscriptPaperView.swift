@@ -4,6 +4,10 @@ struct ManuscriptPaperView: View {
     let grid: ManuscriptGrid
     let prompt: PracticePrompt
     let showsGuides: Bool
+    /// The UIKit viewport renders this view at a larger frame after a zoom.
+    /// Scale fixed design measurements with that frame so the grid stays in
+    /// the same paper coordinate system as PencilKit ink.
+    let layoutScale: CGFloat
 
     static let gridInset: CGFloat = 34
     static let headerHeight: CGFloat = 14
@@ -18,28 +22,41 @@ struct ManuscriptPaperView: View {
     }
 
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [PaperPalette.paper, PaperPalette.paper.opacity(0.96)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+        GeometryReader { geometry in
+            let gridFrame = ManuscriptPaperLayout.gridRect(
+                in: geometry.size,
+                grid: grid,
+                scale: layoutScale
+            )
+            let headerCenter = CGPoint(
+                x: gridFrame.midX,
+                y: gridFrame.minY
+                    - Self.headerSpacing * layoutScale
+                    - Self.headerHeight * layoutScale / 2
             )
 
-            paperFibers
+            ZStack {
+                LinearGradient(
+                    colors: [PaperPalette.paper, PaperPalette.paper.opacity(0.96)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
 
-            VStack(spacing: 8) {
+                paperFibers
+
                 HStack {
                     Text("原稿用紙")
-                        .font(.system(size: 11, weight: .semibold, design: .serif))
-                        .tracking(3)
+                        .font(.system(size: 11 * layoutScale, weight: .semibold, design: .serif))
+                        .tracking(3 * layoutScale)
 
                     Spacer()
 
                     Text("\(grid.characterCapacity) 字 ・ 縦書き")
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
+                        .font(.system(size: 9 * layoutScale, weight: .medium, design: .rounded))
                 }
                 .foregroundStyle(PaperPalette.grid.opacity(0.8))
-                .frame(height: Self.headerHeight)
+                .frame(width: gridFrame.width, height: Self.headerHeight * layoutScale)
+                .position(headerCenter)
 
                 ZStack {
                     Canvas { context, size in
@@ -58,19 +75,16 @@ struct ManuscriptPaperView: View {
                         .allowsHitTesting(false)
                     }
                 }
-                .aspectRatio(Self.gridAspectRatio(for: grid), contentMode: .fit)
-
-                Spacer(minLength: 0)
+                .frame(width: gridFrame.width, height: gridFrame.height)
+                .position(x: gridFrame.midX, y: gridFrame.midY)
             }
-            .frame(maxHeight: .infinity, alignment: .top)
-            .padding(Self.gridInset)
         }
-        .clipShape(RoundedRectangle(cornerRadius: PaperRadius.sheet))
+        .clipShape(RoundedRectangle(cornerRadius: PaperRadius.sheet * layoutScale))
         .overlay {
-            RoundedRectangle(cornerRadius: PaperRadius.sheet)
-                .stroke(PaperPalette.sumi.opacity(0.12), lineWidth: 1)
+            RoundedRectangle(cornerRadius: PaperRadius.sheet * layoutScale)
+                .stroke(PaperPalette.sumi.opacity(0.12), lineWidth: layoutScale)
         }
-        .shadow(color: PaperPalette.paperShadow, radius: 24, y: 12)
+        .shadow(color: PaperPalette.paperShadow, radius: 24 * layoutScale, y: 12 * layoutScale)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(grid.characterCapacity) character vertical manuscript practice paper")
     }
@@ -78,15 +92,15 @@ struct ManuscriptPaperView: View {
     private var paperFibers: some View {
         Canvas { context, size in
             var path = Path()
-            let spacing: CGFloat = 11
+            let spacing: CGFloat = 11 * layoutScale
 
             for index in 0...Int(size.height / spacing) {
-                let y = CGFloat(index) * spacing + CGFloat(index % 3)
+                let y = CGFloat(index) * spacing + CGFloat(index % 3) * layoutScale
                 path.move(to: CGPoint(x: 0, y: y))
-                path.addLine(to: CGPoint(x: size.width, y: y + 1.5))
+                path.addLine(to: CGPoint(x: size.width, y: y + 1.5 * layoutScale))
             }
 
-            context.stroke(path, with: .color(PaperPalette.sumi.opacity(0.018)), lineWidth: 0.5)
+            context.stroke(path, with: .color(PaperPalette.sumi.opacity(0.018)), lineWidth: 0.5 * layoutScale)
         }
         .allowsHitTesting(false)
     }
@@ -112,7 +126,7 @@ struct ManuscriptPaperView: View {
             }
         }
 
-        context.stroke(columnBorders, with: .color(PaperPalette.grid.opacity(0.8)), lineWidth: 0.72)
+        context.stroke(columnBorders, with: .color(PaperPalette.grid.opacity(0.8)), lineWidth: 0.72 * layoutScale)
 
         var centerGuides = Path()
         for column in 0..<grid.columns {
@@ -139,7 +153,7 @@ struct ManuscriptPaperView: View {
         context.stroke(
             centerGuides,
             with: .color(PaperPalette.grid.opacity(0.25)),
-            lineWidth: 0.38
+            lineWidth: 0.38 * layoutScale
         )
     }
 
@@ -186,6 +200,21 @@ struct ManuscriptPaperView: View {
         let cellSize: CGFloat
         let columnGap: CGFloat
         let origin: CGPoint
+    }
+}
+
+enum ManuscriptPaperLayout {
+    static func gridRect(in paperSize: CGSize, grid: ManuscriptGrid, scale: CGFloat = 1) -> CGRect {
+        let inset = ManuscriptPaperView.gridInset * scale
+        let gridWidth = max(paperSize.width - inset * 2, 0)
+        return CGRect(
+            x: inset,
+            y: inset
+                + ManuscriptPaperView.headerHeight * scale
+                + ManuscriptPaperView.headerSpacing * scale,
+            width: gridWidth,
+            height: gridWidth / ManuscriptPaperView.gridAspectRatio(for: grid)
+        )
     }
 }
 

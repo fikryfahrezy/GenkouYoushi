@@ -158,10 +158,7 @@ struct PaperViewportView: UIViewRepresentable {
             lastAppliedScale = renderScale
             parent.onDrawingChange(
                 drawingData,
-                CGSize(
-                    width: canvasView.bounds.width / renderScale,
-                    height: canvasView.bounds.height / renderScale
-                )
+                gridRect(for: parent.paperSize, grid: parent.grid).size
             )
         }
 
@@ -215,15 +212,32 @@ struct PaperViewportView: UIViewRepresentable {
 
         private func displayDrawing(from data: Data, at scale: CGFloat) -> PKDrawing {
             let drawing = (try? PKDrawing(data: data)) ?? PKDrawing()
-            guard scale != 1 else { return drawing }
-            return drawing.transformed(using: CGAffineTransform(scaleX: scale, y: scale))
+            return drawing.transformed(using: paperTransform(at: scale))
         }
 
         private func sourceDrawingData(from drawing: PKDrawing, at scale: CGFloat) -> Data {
-            guard scale != 1 else { return drawing.dataRepresentation() }
             return drawing
-                .transformed(using: CGAffineTransform(scaleX: 1 / scale, y: 1 / scale))
+                .transformed(using: paperTransform(at: scale).inverted())
                 .dataRepresentation()
+        }
+
+        /// Drawings stay stored in grid-local coordinates, keeping existing
+        /// documents compatible. The visible canvas now spans the paper, so
+        /// translate ink into paper coordinates for display.
+        private func paperTransform(at scale: CGFloat) -> CGAffineTransform {
+            let gridOrigin = gridRect(for: parent.paperSize, grid: parent.grid).origin
+            return CGAffineTransform(
+                a: scale,
+                b: 0,
+                c: 0,
+                d: scale,
+                tx: gridOrigin.x * scale,
+                ty: gridOrigin.y * scale
+            )
+        }
+
+        private func gridRect(for paperSize: CGSize, grid: ManuscriptGrid) -> CGRect {
+            ManuscriptPaperLayout.gridRect(in: paperSize, grid: grid)
         }
     }
 
@@ -240,6 +254,8 @@ final class PaperViewportContainer: UIView {
     private var paperHost: UIHostingController<ManuscriptPaperView>?
     private var paperSize = CGSize.zero
     private var grid = ManuscriptGrid.standard400
+    private var prompt = PracticePrompt.sample
+    private var showsGuides = true
     private var scale: CGFloat = 1
     private var offset = CGSize.zero
     private var isShowingLivePreview = false
@@ -257,6 +273,7 @@ final class PaperViewportContainer: UIView {
         canvas.backgroundColor = .clear
         canvas.isOpaque = false
         canvas.isScrollEnabled = false
+        canvas.clipsToBounds = true
         canvas.drawingPolicy = .anyInput
         contentView.addSubview(canvas)
     }
@@ -277,7 +294,18 @@ final class PaperViewportContainer: UIView {
 
     func updatePaper(grid: ManuscriptGrid, prompt: PracticePrompt, showsGuides: Bool) {
         self.grid = grid
-        let paper = ManuscriptPaperView(grid: grid, prompt: prompt, showsGuides: showsGuides)
+        self.prompt = prompt
+        self.showsGuides = showsGuides
+        updatePaperHost()
+    }
+
+    private func updatePaperHost() {
+        let paper = ManuscriptPaperView(
+            grid: grid,
+            prompt: prompt,
+            showsGuides: showsGuides,
+            layoutScale: isShowingLivePreview ? 1 : scale
+        )
         if let paperHost {
             paperHost.rootView = paper
         } else {
@@ -295,6 +323,7 @@ final class PaperViewportContainer: UIView {
         scale = 1
         offset = .zero
         isShowingLivePreview = false
+        updatePaperHost()
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         layoutSharpPaper()
@@ -304,13 +333,15 @@ final class PaperViewportContainer: UIView {
     func beginLiveViewportPreview() {
         guard !isShowingLivePreview else { return }
         isShowingLivePreview = true
+        updatePaperHost()
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         contentView.transform = .identity
         contentView.bounds = CGRect(origin: .zero, size: paperSize)
         contentView.center = viewportCenter(offset: offset)
         paperHost?.view.frame = contentView.bounds
-        canvas.frame = gridRect(in: paperSize, grid: grid)
+        canvas.frame = contentView.bounds
+        canvas.layer.cornerRadius = PaperRadius.sheet
         updateLivePreviewTransform()
         CATransaction.commit()
     }
@@ -318,6 +349,7 @@ final class PaperViewportContainer: UIView {
     func endLiveViewportPreview(grid: ManuscriptGrid) {
         self.grid = grid
         isShowingLivePreview = false
+        updatePaperHost()
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         layoutSharpPaper()
@@ -343,7 +375,8 @@ final class PaperViewportContainer: UIView {
         contentView.bounds = CGRect(origin: .zero, size: scaledPaperSize)
         contentView.center = viewportCenter(offset: offset)
         paperHost?.view.frame = contentView.bounds
-        canvas.frame = gridRect(in: scaledPaperSize, grid: grid)
+        canvas.frame = contentView.bounds
+        canvas.layer.cornerRadius = PaperRadius.sheet * scale
     }
 
     private func updateLivePreviewTransform() {
