@@ -1,111 +1,97 @@
-from typing import Union, cast, Annotated
-from .types import Kanji, KanjiIndex
-from fastapi import FastAPI, Path, Query, HTTPException
-from urllib.request import Request, urlopen
-from urllib.error import URLError, HTTPError
-from json.decoder import JSONDecoder, JSONDecodeError
-from base64 import b64encode
-from xml.etree import ElementTree
-from re import search, DOTALL
-from functools import reduce
+from collections.abc import Callable
 
-def element_tostring(element: ElementTree.Element) -> str:
-    return ElementTree.tostring(element, encoding="unicode", method="xml").strip()
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-def previous_element_string(elements: list[ElementTree.Element]) -> str:
-    return reduce(lambda value, element: f"{value}\t{element_tostring(element)}\n", elements, "")
+from .config import Settings
+from .errors import (
+    ImageTooLargeError,
+    InvalidImageError,
+    KanjiAPIError,
+    KanjiNotFoundError,
+    OCRProviderError,
+    OCRProviderUnavailableError,
+    OCRTimeoutError,
+    RateLimitExceededError,
+    UpstreamDataError,
+    UpstreamServiceError,
+)
+from .rate_limit import SlidingWindowRateLimiter
+from .routers import kanji_router, ocr_router
+from .services import (
+    GoogleVisionProvider,
+    KanjiService,
+    KanjiVGClient,
+    OCRService,
+    TesseractProvider,
+)
 
-def svg_to_progressive_strings(svg_string: str, stroke_path: str, with_number: bool) -> list[str]:
-    xml_version_declaration = search(r'<\?xml.*?\?>', svg_string).group(0)
-    doctype_declaration = search(r'<!DOCTYPE.*?\]>', svg_string, DOTALL).group(0)
-    svg_tag = search(r'<svg xmlns="http://www.w3.org/2000/svg".*?>', svg_string).group(0)
-    stroke_paths_tag = search(r'<g id="kvg:StrokePaths.*?>', svg_string).group(0)
-    stroke_numbers_tag = search(r'<g id="kvg:StrokeNumbers.*?>', svg_string).group(0)
-
-    ns = {"svg": "http://www.w3.org/2000/svg"}
-    ElementTree.register_namespace("", ns["svg"])
-    root = ElementTree.fromstring(svg_string)
-
-    path_group = root.find(f".//svg:*[@id='kvg:StrokePaths_{stroke_path}']", ns)
-    text_group = root.find(f".//svg:*[@id='kvg:StrokeNumbers_{stroke_path}']", ns)
-
-    path_elements = path_group.findall(".//svg:path", ns)
-    text_elements = text_group.findall(".//svg:text", ns)
-
-    stroke_orders: list[str] = []
-    for i in range(0, len(path_elements)):
-        path_strings = f"{previous_element_string(path_elements[:i])}\t{element_tostring(path_elements[i])}"
-        text_strings = f"{previous_element_string(text_elements[:i])}\t{element_tostring(text_elements[i])}" if with_number else ""
-
-        stroke_order = f"""{xml_version_declaration}
-{doctype_declaration}
-{svg_tag}
-{stroke_paths_tag}
-{path_strings}
-</g>
-{stroke_numbers_tag}
-{text_strings}
-</g>
-</svg>
-"""
-        stroke_orders.append(stroke_order)
-
-    return stroke_orders
+ErrorHandler = Callable[[Request, KanjiAPIError], JSONResponse]
 
 
-def get_kvg_index() -> Union[KanjiIndex, None]:
-    req = Request(url="https://raw.githubusercontent.com/KanjiVG/kanjivg/refs/heads/master/kvg-index.json")
-    jsonDecoder = JSONDecoder()
-    
-    try:
-        response = urlopen(req)
-        return cast(KanjiIndex, jsonDecoder.decode(response.read().decode("utf-8")))
-    except HTTPError as e:
-        raise Exception(f"The server couldn\'t fulfill the KVG Index request. Error code: {e.code}")
-    except URLError as e:
-        raise Exception(f"We failed to reach a KVG Index server. Reason: {e.reason}")
-    except JSONDecodeError as e:
-        raise Exception(f"Fail to decode KVG Index string to JSON. Reason: {e.reason}")
+def create_app(settings: Settings | None = None) -> FastAPI:
+    configured = settings or Settings.from_environment()
+    app = FastAPI(
+        title="Genkou Youshi API",
+        version="0.2.0",
+        docs_url="/docs",
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(configured.cors_origins),
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Accept"],
+    )
+    _install_services(app, configured)
+    _install_error_handlers(app)
+    app.include_router(kanji_router)
+    app.include_router(ocr_router)
+    return app
 
-    raise Exception("Unknown error on KVG Index")
-    
-def get_kvg(kanji: str) -> Union[str, None]:
-    req = Request(url=f"https://raw.githubusercontent.com/KanjiVG/kanjivg/refs/heads/master/kanji/{kanji}")
-    
-    try:
-        response = urlopen(req)
-        return response.read().decode("utf-8")
-    except HTTPError as e:
-        raise Exception(f"The server couldn\'t fulfill the SVG request. Error code: {e.code}")
-    except URLError as e:
-        raise Exception(f"We failed to reach a SVG server. Reason: {e.reason}")
 
-    raise Exception("Unknown error on SVG")
+def _install_services(app: FastAPI, settings: Settings) -> None:
+    kanjivg_client = KanjiVGClient(
+        index_url=settings.kanjivg_index_url,
+        files_url=settings.kanjivg_files_url,
+        timeout_seconds=settings.http_timeout_seconds,
+        index_cache_seconds=settings.kanjivg_index_cache_seconds,
+    )
+    app.state.kanji_service = KanjiService(kanjivg_client)
+    app.state.ocr_service = OCRService(
+        providers={
+            "tesseract": TesseractProvider(settings),
+            "google": GoogleVisionProvider(settings),
+        },
+        maximum_image_bytes=settings.ocr_max_image_bytes,
+    )
+    app.state.ocr_rate_limiter = SlidingWindowRateLimiter(
+        maximum_requests=settings.ocr_rate_limit_per_hour,
+        window_seconds=60 * 60,
+    )
 
-app = FastAPI(docs_url="/docs")
 
-@app.get("/kanji/{kanji}")
-def get_kanji_index(kanji: Annotated[str, Path(title="The kanji to get.")],
-                    with_number: Annotated[bool, Query(description="Show the stroke order number.")] = True) -> Kanji:
-    try:
-        kvg_index = get_kvg_index()
+def _install_error_handlers(app: FastAPI) -> None:
+    status_codes: dict[type[KanjiAPIError], int] = {
+        KanjiNotFoundError: 404,
+        InvalidImageError: 400,
+        RateLimitExceededError: 429,
+        ImageTooLargeError: 413,
+        UpstreamServiceError: 502,
+        UpstreamDataError: 502,
+        OCRProviderError: 502,
+        OCRProviderUnavailableError: 503,
+        OCRTimeoutError: 504,
+    }
+    for error_type, status_code in status_codes.items():
+        app.add_exception_handler(error_type, _error_handler(status_code))
 
-        kvgs = kvg_index.get(kanji) or []
-        kvg = kvgs[-1] if len(kvgs) != 0 else None
-        if kvg is None:
-            raise HTTPException(status_code=404, detail="Kanji not found in index.")
 
-        kvg_file = get_kvg(kvg)
-        if kvg_file is None:
-            raise HTTPException(status_code=404, detail="Kanji strokes not found.")
+def _error_handler(status_code: int) -> ErrorHandler:
+    async def handle(_: Request, error: KanjiAPIError) -> JSONResponse:
+        return JSONResponse(status_code=status_code, content={"detail": str(error)})
 
-        stroke_orders = [b64encode(stroke_order.encode(encoding="utf-8", errors="strict")) for stroke_order in svg_to_progressive_strings(kvg_file, kvg.replace(".svg", ""), with_number)]
+    return handle
 
-        kanji: Kanji = {"kanji": kanji, "stroke_orders": stroke_orders}
-        return kanji
-    except HTTPException as e:
-        raise e
-    except UnicodeError as e:
-        raise HTTPException(status_code=500, detail=f"Fail to encode KVG file. Reason: {e.reason}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Fail somewhere. Reason: {e}")
+
+app = create_app()

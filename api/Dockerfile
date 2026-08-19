@@ -25,9 +25,16 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Then, use a final image without uv
 FROM python:3.13.5-slim-bookworm
 
-# Install ca-certificates and curl for health checks
-RUN apt-get update && \
-    apt-get install -y ca-certificates curl tzdata && \
+# Set false for a smaller cloud-only image.
+ARG INSTALL_LOCAL_OCR=true
+
+# Install Tesseract's lightweight Japanese model when local OCR is requested.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y ca-certificates curl tzdata; \
+    if [ "$INSTALL_LOCAL_OCR" = "true" ]; then \
+        apt-get install -y tesseract-ocr tesseract-ocr-jpn; \
+    fi; \
     rm -rf /var/lib/apt/lists/*
 
 # It is important to use the image that matches the builder, as the path to the
