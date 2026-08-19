@@ -1,159 +1,143 @@
 import PencilKit
 import SwiftUI
+import UIKit
 
-struct PencilCanvasView: UIViewRepresentable {
+/// A UIKit-owned paper viewport. UIKit performs pan and zoom for the complete
+/// paper/canvas composition, while PencilKit remains responsible for ink.
+struct PaperViewportView: UIViewRepresentable {
+    let grid: ManuscriptGrid
+    let prompt: PracticePrompt
+    let showsGuides: Bool
+    let paperSize: CGSize
+    let viewportResetID: String
     let drawingData: Data
     let selectedTool: WritingTool
     let strokeWidth: CGFloat
     let clearRequestID: UUID
     let undoRequestID: UUID
     let redoRequestID: UUID
-    @Binding var isViewportGestureActive: Bool
-    let onViewportPan: (CGSize) -> Void
-    let onViewportZoom: (CGFloat) -> Void
     let onDrawingChange: (Data, CGSize) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
     }
 
-    func makeUIView(context: Context) -> PKCanvasView {
-        let canvasView = ViewportGuardedCanvasView()
-        canvasView.backgroundColor = .clear
-        canvasView.isOpaque = false
-        canvasView.isScrollEnabled = false
-        canvasView.drawingPolicy = .anyInput
-        canvasView.tool = tool(for: selectedTool, strokeWidth: strokeWidth)
-        canvasView.delegate = context.coordinator
-        context.coordinator.installViewportGestures(on: canvasView)
-        canvasView.onTwoFingerTouchBegan = { canvasView in
-            context.coordinator.beginViewportGesture(on: canvasView)
-        }
-        canvasView.onTwoFingerTouchEnded = { canvasView in
-            context.coordinator.endViewportGestureIfNeeded(on: canvasView)
-        }
-        context.coordinator.apply(drawingData, to: canvasView)
-        return canvasView
+    func makeUIView(context: Context) -> PaperViewportContainer {
+        let container = PaperViewportContainer()
+        context.coordinator.install(on: container)
+        context.coordinator.update(container)
+        return container
     }
 
-    func updateUIView(_ canvasView: PKCanvasView, context: Context) {
+    func updateUIView(_ container: PaperViewportContainer, context: Context) {
         context.coordinator.parent = self
-        canvasView.tool = tool(for: selectedTool, strokeWidth: strokeWidth)
-        context.coordinator.apply(drawingData, to: canvasView)
-
-        if context.coordinator.lastClearRequestID != clearRequestID {
-            context.coordinator.lastClearRequestID = clearRequestID
-            canvasView.drawing = PKDrawing()
-        }
-        if context.coordinator.lastUndoRequestID != undoRequestID {
-            context.coordinator.lastUndoRequestID = undoRequestID
-            canvasView.undoManager?.undo()
-        }
-        if context.coordinator.lastRedoRequestID != redoRequestID {
-            context.coordinator.lastRedoRequestID = redoRequestID
-            canvasView.undoManager?.redo()
-        }
-    }
-
-    private func tool(for selection: WritingTool, strokeWidth: CGFloat) -> any PKTool {
-        let cappedStrokeWidth = min(
-            max(strokeWidth, WritingTool.minimumStrokeWidth),
-            WritingTool.maximumStrokeWidth
-        )
-
-        return switch selection {
-        case .brush:
-            PKInkingTool(.fountainPen, color: InkColor.sumi, width: cappedStrokeWidth)
-        case .pencil:
-            PKInkingTool(.pencil, color: InkColor.mutedSumi, width: cappedStrokeWidth)
-        case .eraser:
-            PKEraserTool(.vector)
-        }
-    }
-
-    /// PencilKit receives fixed UIKit colors so ink is unaffected by Light/Dark Mode.
-    private enum InkColor {
-        static let sumi = UIColor(red: 0.12, green: 0.11, blue: 0.09, alpha: 1)
-        static let mutedSumi = UIColor(red: 0.34, green: 0.32, blue: 0.27, alpha: 1)
+        context.coordinator.update(container)
     }
 
     @MainActor
     final class Coordinator: NSObject, PKCanvasViewDelegate, UIGestureRecognizerDelegate {
-        var parent: PencilCanvasView
-        var lastClearRequestID: UUID
-        var lastUndoRequestID: UUID
-        var lastRedoRequestID: UUID
+        var parent: PaperViewportView
+        private var lastClearRequestID: UUID
+        private var lastUndoRequestID: UUID
+        private var lastRedoRequestID: UUID
+        private var lastAppliedDrawingData: Data?
+        private var lastAppliedScale: CGFloat?
+        private var lastPaperSize = CGSize.zero
+        private var lastViewportResetID = ""
+        private var drawingDataBeforeViewportGesture: Data?
         private var isApplyingDrawing = false
+        private var isViewportGestureActive = false
         private var isPanActive = false
         private var isPinchActive = false
-        private var drawingBeforeViewportGesture: PKDrawing?
 
-        init(parent: PencilCanvasView) {
+        init(parent: PaperViewportView) {
             self.parent = parent
             self.lastClearRequestID = parent.clearRequestID
             self.lastUndoRequestID = parent.undoRequestID
             self.lastRedoRequestID = parent.redoRequestID
         }
 
-        func apply(_ data: Data, to canvasView: PKCanvasView) {
-            guard canvasView.drawing.dataRepresentation() != data else { return }
-            isApplyingDrawing = true
-            canvasView.drawing = (try? PKDrawing(data: data)) ?? PKDrawing()
-            isApplyingDrawing = false
-        }
-
-        func installViewportGestures(on canvasView: PKCanvasView) {
-            guard canvasView.gestureRecognizers?.contains(where: { $0.name == "sheetViewportPan" }) != true else {
-                return
-            }
+        func install(on container: PaperViewportContainer) {
+            container.canvas.delegate = self
 
             let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handleViewportPan(_:)))
-            panGesture.name = "sheetViewportPan"
             panGesture.minimumNumberOfTouches = 2
             panGesture.maximumNumberOfTouches = 2
             panGesture.cancelsTouchesInView = true
             panGesture.delegate = self
-            canvasView.addGestureRecognizer(panGesture)
+            container.addGestureRecognizer(panGesture)
 
             let pinchGesture = UIPinchGestureRecognizer(target: self, action: #selector(handleViewportPinch(_:)))
-            pinchGesture.name = "sheetViewportPinch"
             pinchGesture.cancelsTouchesInView = true
             pinchGesture.delegate = self
-            canvasView.addGestureRecognizer(pinchGesture)
+            container.addGestureRecognizer(pinchGesture)
+        }
+
+        func update(_ container: PaperViewportContainer) {
+            container.updatePaper(grid: parent.grid, prompt: parent.prompt, showsGuides: parent.showsGuides)
+
+            let requiresViewportReset =
+                lastPaperSize != parent.paperSize ||
+                lastViewportResetID != parent.viewportResetID
+            if requiresViewportReset {
+                lastPaperSize = parent.paperSize
+                lastViewportResetID = parent.viewportResetID
+                container.resetViewport(paperSize: parent.paperSize, grid: parent.grid)
+                lastAppliedScale = nil
+            }
+
+            let renderScale = container.renderScale
+            container.canvas.tool = tool(for: parent.selectedTool, visibleScale: renderScale)
+
+            guard !isViewportGestureActive else { return }
+            apply(parent.drawingData, to: container.canvas, at: renderScale)
+
+            if lastClearRequestID != parent.clearRequestID {
+                lastClearRequestID = parent.clearRequestID
+                apply(Data(), to: container.canvas, at: renderScale, force: true)
+            }
+            if lastUndoRequestID != parent.undoRequestID {
+                lastUndoRequestID = parent.undoRequestID
+                container.canvas.undoManager?.undo()
+            }
+            if lastRedoRequestID != parent.redoRequestID {
+                lastRedoRequestID = parent.redoRequestID
+                container.canvas.undoManager?.redo()
+            }
         }
 
         @objc private func handleViewportPan(_ recognizer: UIPanGestureRecognizer) {
-            guard let canvasView = recognizer.view as? PKCanvasView else { return }
+            guard let container = recognizer.view as? PaperViewportContainer else { return }
 
             switch recognizer.state {
             case .began:
                 isPanActive = true
-                beginViewportGesture(on: canvasView)
+                beginViewportGesture(on: container)
             case .changed:
-                let translation = recognizer.translation(in: canvasView.superview)
-                parent.onViewportPan(CGSize(width: translation.x, height: translation.y))
-                recognizer.setTranslation(.zero, in: canvasView.superview)
+                let translation = recognizer.translation(in: container)
+                container.pan(by: translation)
+                recognizer.setTranslation(.zero, in: container)
             case .ended, .cancelled, .failed:
                 isPanActive = false
-                endViewportGestureIfNeeded(on: canvasView)
+                endViewportGestureIfNeeded(on: container)
             default:
                 break
             }
         }
 
         @objc private func handleViewportPinch(_ recognizer: UIPinchGestureRecognizer) {
-            guard let canvasView = recognizer.view as? PKCanvasView else { return }
+            guard let container = recognizer.view as? PaperViewportContainer else { return }
 
             switch recognizer.state {
             case .began:
                 isPinchActive = true
-                beginViewportGesture(on: canvasView)
+                beginViewportGesture(on: container)
             case .changed:
-                parent.onViewportZoom(recognizer.scale)
+                container.zoom(by: recognizer.scale)
                 recognizer.scale = 1
             case .ended, .cancelled, .failed:
                 isPinchActive = false
-                endViewportGestureIfNeeded(on: canvasView)
+                endViewportGestureIfNeeded(on: container)
             default:
                 break
             }
@@ -167,69 +151,232 @@ struct PencilCanvasView: UIViewRepresentable {
         }
 
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
-            guard !isApplyingDrawing, !parent.isViewportGestureActive else { return }
+            guard !isApplyingDrawing, !isViewportGestureActive else { return }
+            let renderScale = lastAppliedScale ?? 1
+            let drawingData = sourceDrawingData(from: canvasView.drawing, at: renderScale)
+            lastAppliedDrawingData = drawingData
+            lastAppliedScale = renderScale
             parent.onDrawingChange(
-                canvasView.drawing.dataRepresentation(),
-                canvasView.bounds.size
+                drawingData,
+                CGSize(
+                    width: canvasView.bounds.width / renderScale,
+                    height: canvasView.bounds.height / renderScale
+                )
             )
         }
 
-        func beginViewportGesture(on canvasView: PKCanvasView) {
-            guard !parent.isViewportGestureActive else { return }
-            drawingBeforeViewportGesture = canvasView.drawing
-            parent.isViewportGestureActive = true
-            canvasView.drawingPolicy = .pencilOnly
+        private func beginViewportGesture(on container: PaperViewportContainer) {
+            guard !isViewportGestureActive else { return }
+            isViewportGestureActive = true
+            drawingDataBeforeViewportGesture = lastAppliedDrawingData ?? parent.drawingData
+            container.beginLiveViewportPreview()
+            apply(drawingDataBeforeViewportGesture ?? Data(), to: container.canvas, at: 1, force: true)
+            container.canvas.drawingPolicy = .pencilOnly
         }
 
-        func endViewportGestureIfNeeded(on canvasView: PKCanvasView) {
-            guard !isPanActive, !isPinchActive else { return }
-            if let drawingBeforeViewportGesture {
-                isApplyingDrawing = true
-                canvasView.drawing = drawingBeforeViewportGesture
-                isApplyingDrawing = false
-            }
-            drawingBeforeViewportGesture = nil
-            canvasView.drawingPolicy = .anyInput
-            parent.isViewportGestureActive = false
+        private func endViewportGestureIfNeeded(on container: PaperViewportContainer) {
+            guard !isPanActive, !isPinchActive, isViewportGestureActive else { return }
+            let drawingData = drawingDataBeforeViewportGesture ?? parent.drawingData
+            container.endLiveViewportPreview(grid: parent.grid)
+            let renderScale = container.renderScale
+            apply(drawingData, to: container.canvas, at: renderScale, force: true)
+            container.canvas.tool = tool(for: parent.selectedTool, visibleScale: renderScale)
+            container.canvas.drawingPolicy = .anyInput
+            drawingDataBeforeViewportGesture = nil
+            isViewportGestureActive = false
         }
+
+        private func apply(_ data: Data, to canvasView: PKCanvasView, at scale: CGFloat, force: Bool = false) {
+            let hasSameScale = lastAppliedScale.map { abs($0 - scale) <= 0.0001 } ?? false
+            guard force || lastAppliedDrawingData != data || !hasSameScale else { return }
+
+            isApplyingDrawing = true
+            canvasView.drawing = displayDrawing(from: data, at: scale)
+            isApplyingDrawing = false
+            lastAppliedDrawingData = data
+            lastAppliedScale = scale
+        }
+
+        private func tool(for selection: WritingTool, visibleScale: CGFloat) -> any PKTool {
+            let width = min(
+                max(parent.strokeWidth, WritingTool.minimumStrokeWidth),
+                WritingTool.maximumStrokeWidth
+            ) * visibleScale
+
+            return switch selection {
+            case .brush:
+                PKInkingTool(.fountainPen, color: InkColor.sumi, width: width)
+            case .pencil:
+                PKInkingTool(.pencil, color: InkColor.mutedSumi, width: width)
+            case .eraser:
+                PKEraserTool(.vector)
+            }
+        }
+
+        private func displayDrawing(from data: Data, at scale: CGFloat) -> PKDrawing {
+            let drawing = (try? PKDrawing(data: data)) ?? PKDrawing()
+            guard scale != 1 else { return drawing }
+            return drawing.transformed(using: CGAffineTransform(scaleX: scale, y: scale))
+        }
+
+        private func sourceDrawingData(from drawing: PKDrawing, at scale: CGFloat) -> Data {
+            guard scale != 1 else { return drawing.dataRepresentation() }
+            return drawing
+                .transformed(using: CGAffineTransform(scaleX: 1 / scale, y: 1 / scale))
+                .dataRepresentation()
+        }
+    }
+
+    private enum InkColor {
+        static let sumi = UIColor(red: 0.12, green: 0.11, blue: 0.09, alpha: 1)
+        static let mutedSumi = UIColor(red: 0.34, green: 0.32, blue: 0.27, alpha: 1)
     }
 }
 
-private final class ViewportGuardedCanvasView: PKCanvasView {
-    var onTwoFingerTouchBegan: ((PKCanvasView) -> Void)?
-    var onTwoFingerTouchEnded: ((PKCanvasView) -> Void)?
+@MainActor
+final class PaperViewportContainer: UIView {
+    let canvas = PKCanvasView()
+    private let contentView = UIView()
+    private var paperHost: UIHostingController<ManuscriptPaperView>?
+    private var paperSize = CGSize.zero
+    private var grid = ManuscriptGrid.standard400
+    private var scale: CGFloat = 1
+    private var offset = CGSize.zero
+    private var isShowingLivePreview = false
 
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if activeTouchCount(in: event) >= 2 {
-            onTwoFingerTouchBegan?(self)
-        }
-        super.touchesBegan(touches, with: event)
+    var renderScale: CGFloat { isShowingLivePreview ? 1 : scale }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        clipsToBounds = true
+        backgroundColor = .clear
+
+        contentView.clipsToBounds = false
+        addSubview(contentView)
+
+        canvas.backgroundColor = .clear
+        canvas.isOpaque = false
+        canvas.isScrollEnabled = false
+        canvas.drawingPolicy = .anyInput
+        contentView.addSubview(canvas)
     }
 
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if activeTouchCount(in: event) >= 2 {
-            onTwoFingerTouchBegan?(self)
-        }
-        super.touchesMoved(touches, with: event)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        super.touchesEnded(touches, with: event)
-        if activeTouchCount(in: event) < 2 {
-            onTwoFingerTouchEnded?(self)
-        }
-    }
-
-    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        super.touchesCancelled(touches, with: event)
-        if activeTouchCount(in: event) < 2 {
-            onTwoFingerTouchEnded?(self)
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard paperSize.width > 0, paperSize.height > 0 else { return }
+        if isShowingLivePreview {
+            updateLivePreviewTransform()
+        } else {
+            layoutSharpPaper()
         }
     }
 
-    private func activeTouchCount(in event: UIEvent?) -> Int {
-        event?.allTouches?.filter { touch in
-            touch.phase != .ended && touch.phase != .cancelled
-        }.count ?? 0
+    func updatePaper(grid: ManuscriptGrid, prompt: PracticePrompt, showsGuides: Bool) {
+        self.grid = grid
+        let paper = ManuscriptPaperView(grid: grid, prompt: prompt, showsGuides: showsGuides)
+        if let paperHost {
+            paperHost.rootView = paper
+        } else {
+            let paperHost = UIHostingController(rootView: paper)
+            paperHost.view.backgroundColor = .clear
+            paperHost.view.isOpaque = false
+            contentView.insertSubview(paperHost.view, belowSubview: canvas)
+            self.paperHost = paperHost
+        }
+    }
+
+    func resetViewport(paperSize: CGSize, grid: ManuscriptGrid) {
+        self.paperSize = paperSize
+        self.grid = grid
+        scale = 1
+        offset = .zero
+        isShowingLivePreview = false
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        layoutSharpPaper()
+        CATransaction.commit()
+    }
+
+    func beginLiveViewportPreview() {
+        guard !isShowingLivePreview else { return }
+        isShowingLivePreview = true
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        contentView.transform = .identity
+        contentView.bounds = CGRect(origin: .zero, size: paperSize)
+        contentView.center = viewportCenter(offset: offset)
+        paperHost?.view.frame = contentView.bounds
+        canvas.frame = gridRect(in: paperSize, grid: grid)
+        updateLivePreviewTransform()
+        CATransaction.commit()
+    }
+
+    func endLiveViewportPreview(grid: ManuscriptGrid) {
+        self.grid = grid
+        isShowingLivePreview = false
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        layoutSharpPaper()
+        CATransaction.commit()
+    }
+
+    func pan(by translation: CGPoint) {
+        offset = clampedOffset(
+            CGSize(width: offset.width + translation.x, height: offset.height + translation.y)
+        )
+        updateLivePreviewTransform()
+    }
+
+    func zoom(by scaleDelta: CGFloat) {
+        scale = min(max(scale * scaleDelta, 1), 3)
+        offset = clampedOffset(offset)
+        updateLivePreviewTransform()
+    }
+
+    private func layoutSharpPaper() {
+        let scaledPaperSize = CGSize(width: paperSize.width * scale, height: paperSize.height * scale)
+        contentView.transform = .identity
+        contentView.bounds = CGRect(origin: .zero, size: scaledPaperSize)
+        contentView.center = viewportCenter(offset: offset)
+        paperHost?.view.frame = contentView.bounds
+        canvas.frame = gridRect(in: scaledPaperSize, grid: grid)
+    }
+
+    private func updateLivePreviewTransform() {
+        guard isShowingLivePreview else { return }
+        contentView.center = viewportCenter(offset: offset)
+        contentView.transform = CGAffineTransform(scaleX: scale, y: scale)
+    }
+
+    private func viewportCenter(offset: CGSize) -> CGPoint {
+        CGPoint(x: bounds.midX + offset.width, y: bounds.midY + offset.height)
+    }
+
+    private func clampedOffset(_ proposedOffset: CGSize) -> CGSize {
+        let horizontalLimit = max((paperSize.width * scale - bounds.width) / 2, 0)
+        let verticalLimit = max((paperSize.height * scale - bounds.height) / 2, 0)
+        return CGSize(
+            width: min(max(proposedOffset.width, -horizontalLimit), horizontalLimit),
+            height: min(max(proposedOffset.height, -verticalLimit), verticalLimit)
+        )
+    }
+
+    private func gridRect(in paperSize: CGSize, grid: ManuscriptGrid) -> CGRect {
+        let scale = paperSize.width / self.paperSize.width
+        let inset = ManuscriptPaperView.gridInset * scale
+        let headerHeight = ManuscriptPaperView.headerHeight * scale
+        let headerSpacing = ManuscriptPaperView.headerSpacing * scale
+        let gridWidth = paperSize.width - inset * 2
+        let gridHeight = gridWidth / ManuscriptPaperView.gridAspectRatio(for: grid)
+        return CGRect(
+            x: inset,
+            y: inset + headerHeight + headerSpacing,
+            width: gridWidth,
+            height: gridHeight
+        )
     }
 }

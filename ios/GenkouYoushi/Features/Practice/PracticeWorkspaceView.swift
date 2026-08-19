@@ -9,9 +9,6 @@ struct PracticeWorkspaceView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var isReferencePanelPresented = false
     @State private var isCreatingSheet = false
-    @State private var paperScale: CGFloat = 1
-    @State private var paperOffset = CGSize.zero
-    @State private var isManipulatingPaper = false
     @FocusState private var isKanjiFieldFocused: Bool
 
     var body: some View {
@@ -138,24 +135,23 @@ struct PracticeWorkspaceView: View {
                 let availableWidth = max(geometry.size.width - 48, 100)
                 let availableHeight = max(geometry.size.height - toolShelfHeight - 36, 100)
                 let paperSize = fittedPaperSize(width: availableWidth, height: availableHeight, grid: model.grid)
-
                 VStack(spacing: 0) {
-                    ZStack {
-                        ZStack {
-                            ManuscriptPaperView(
-                                grid: model.grid,
-                                prompt: model.prompt,
-                                showsGuides: model.showsGuides
-                            )
-
-                            drawingSurface(viewportSize: geometry.size, paperSize: paperSize)
+                    PaperViewportView(
+                        grid: model.grid,
+                        prompt: model.prompt,
+                        showsGuides: model.showsGuides,
+                        paperSize: paperSize,
+                        viewportResetID: "\(model.activeDocumentID.uuidString)-\(model.grid.columns)x\(model.grid.rows)",
+                        drawingData: model.drawingData,
+                        selectedTool: model.selectedTool,
+                        strokeWidth: model.strokeWidth,
+                        clearRequestID: model.clearRequestID,
+                        undoRequestID: model.undoRequestID,
+                        redoRequestID: model.redoRequestID,
+                        onDrawingChange: { data, size in
+                            model.drawingDidChange(data: data, canvasSize: size)
                         }
-                        .frame(width: paperSize.width, height: paperSize.height)
-                        .scaleEffect(paperScale)
-                        .offset(paperOffset)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
+                    )
 
                     toolShelf
                 }
@@ -164,12 +160,6 @@ struct PracticeWorkspaceView: View {
                 .contentShape(Rectangle())
             }
             .zIndex(0)
-            .onChange(of: model.activeDocumentID) { _, _ in
-                resetPaperViewport()
-            }
-            .onChange(of: model.grid) { _, _ in
-                resetPaperViewport()
-            }
         }
         .background(PaperPalette.sumi.opacity(0.035), in: RoundedRectangle(cornerRadius: PaperRadius.panel))
         .clipShape(RoundedRectangle(cornerRadius: PaperRadius.panel))
@@ -471,37 +461,6 @@ struct PracticeWorkspaceView: View {
         }
     }
 
-    private func drawingSurface(viewportSize: CGSize, paperSize: CGSize) -> some View {
-        VStack(spacing: ManuscriptPaperView.headerSpacing) {
-            Color.clear
-                .frame(height: ManuscriptPaperView.headerHeight)
-
-            PencilCanvasView(
-                drawingData: model.drawingData,
-                selectedTool: model.selectedTool,
-                strokeWidth: model.strokeWidth,
-                clearRequestID: model.clearRequestID,
-                undoRequestID: model.undoRequestID,
-                redoRequestID: model.redoRequestID,
-                isViewportGestureActive: $isManipulatingPaper,
-                onViewportPan: { translation in
-                panPaper(by: translation, viewportSize: viewportSize, paperSize: paperSize)
-                },
-                onViewportZoom: { scaleDelta in
-                zoomPaper(by: scaleDelta, viewportSize: viewportSize, paperSize: paperSize)
-                },
-                onDrawingChange: { data, size in
-                    model.drawingDidChange(data: data, canvasSize: size)
-                }
-            )
-            .aspectRatio(ManuscriptPaperView.gridAspectRatio(for: model.grid), contentMode: .fit)
-
-            Spacer(minLength: 0)
-        }
-        .frame(maxHeight: .infinity, alignment: .top)
-        .padding(ManuscriptPaperView.gridInset)
-    }
-
     @ViewBuilder
     private var libraryView: some View {
         if isCreatingSheet {
@@ -690,39 +649,6 @@ struct PracticeWorkspaceView: View {
         )
     }
 
-    private func panPaper(by translation: CGSize, viewportSize: CGSize, paperSize: CGSize) {
-        let nextOffset = CGSize(
-            width: paperOffset.width + translation.width,
-            height: paperOffset.height + translation.height
-        )
-        paperOffset = clampedPaperOffset(nextOffset, scale: paperScale, viewportSize: viewportSize, paperSize: paperSize)
-    }
-
-    private func zoomPaper(by scaleDelta: CGFloat, viewportSize: CGSize, paperSize: CGSize) {
-        let nextScale = min(max(paperScale * scaleDelta, 1), 3)
-        paperScale = nextScale
-        paperOffset = clampedPaperOffset(paperOffset, scale: nextScale, viewportSize: viewportSize, paperSize: paperSize)
-    }
-
-    private func resetPaperViewport() {
-        paperScale = 1
-        paperOffset = .zero
-    }
-
-    private func clampedPaperOffset(
-        _ offset: CGSize,
-        scale: CGFloat,
-        viewportSize: CGSize,
-        paperSize: CGSize
-    ) -> CGSize {
-        let horizontalLimit = max((paperSize.width * scale - viewportSize.width) / 2, 0)
-        let verticalLimit = max((paperSize.height * scale - viewportSize.height) / 2, 0)
-
-        return CGSize(
-            width: min(max(offset.width, -horizontalLimit), horizontalLimit),
-            height: min(max(offset.height, -verticalLimit), verticalLimit)
-        )
-    }
 }
 
 #Preview("Writing workspace", traits: .landscapeLeft) {
