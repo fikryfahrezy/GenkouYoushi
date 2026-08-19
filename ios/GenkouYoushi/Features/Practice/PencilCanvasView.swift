@@ -1,209 +1,205 @@
+import PaperKit
 import PencilKit
 import SwiftUI
 import UIKit
 
-/// A UIKit-owned paper viewport. UIKit performs pan and zoom for the complete
-/// paper/canvas composition, while PencilKit remains responsible for ink.
-struct PaperViewportView: UIViewRepresentable {
+/// PaperKit owns the interactive canvas, including high-quality zooming and
+/// panning. PencilKit remains the ink engine behind the selected drawing tool.
+struct PaperKitViewportView: UIViewControllerRepresentable {
     let grid: ManuscriptGrid
     let prompt: PracticePrompt
     let showsGuides: Bool
-    let paperSize: CGSize
     let viewportResetID: String
+    let markupData: Data?
     let drawingData: Data
+    let drawingCanvasSize: CGSize
     let selectedTool: WritingTool
     let strokeWidth: CGFloat
     let clearRequestID: UUID
     let undoRequestID: UUID
     let redoRequestID: UUID
-    let onDrawingChange: (Data, CGSize) -> Void
+    let onMarkupChange: (Data) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
     }
 
-    func makeUIView(context: Context) -> PaperViewportContainer {
-        let container = PaperViewportContainer()
-        context.coordinator.install(on: container)
-        context.coordinator.update(container)
-        return container
+    func makeUIViewController(context: Context) -> PaperKitHostViewController {
+        let hostViewController = PaperKitHostViewController()
+        context.coordinator.install(on: hostViewController)
+        return hostViewController
     }
 
-    func updateUIView(_ container: PaperViewportContainer, context: Context) {
+    func updateUIViewController(_ hostViewController: PaperKitHostViewController, context: Context) {
         context.coordinator.parent = self
-        context.coordinator.update(container)
+        context.coordinator.update(hostViewController)
+    }
+
+    private var paperView: some View {
+        let paperSize = ManuscriptPaperCoordinateSpace.paperSize(for: grid)
+        return ManuscriptPaperView(grid: grid, prompt: prompt, showsGuides: showsGuides)
+            .frame(width: paperSize.width, height: paperSize.height)
     }
 
     @MainActor
-    final class Coordinator: NSObject, PKCanvasViewDelegate, UIGestureRecognizerDelegate {
-        var parent: PaperViewportView
+    final class Coordinator: NSObject, PaperMarkupViewController.Delegate {
+        var parent: PaperKitViewportView
+        var paperHost: UIHostingController<AnyView>?
+
+        private var lastViewportResetID = ""
+        private var lastInputMarkupData: Data?
         private var lastClearRequestID: UUID
         private var lastUndoRequestID: UUID
         private var lastRedoRequestID: UUID
-        private var lastAppliedDrawingData: Data?
-        private var lastAppliedScale: CGFloat?
-        private var lastPaperSize = CGSize.zero
-        private var lastViewportResetID = ""
-        private var drawingDataBeforeViewportGesture: Data?
-        private var isApplyingDrawing = false
-        private var isViewportGestureActive = false
-        private var isPanActive = false
-        private var isPinchActive = false
+        private var installedGrid: ManuscriptGrid?
+        private var installedPrompt: PracticePrompt?
+        private var installedShowsGuides: Bool?
+        private var installedTool: WritingTool?
+        private var installedStrokeWidth: CGFloat?
+        private var serializationGeneration = 0
+        private var markupSerializationTask: Task<Void, Never>?
 
-        init(parent: PaperViewportView) {
+        init(parent: PaperKitViewportView) {
             self.parent = parent
             self.lastClearRequestID = parent.clearRequestID
             self.lastUndoRequestID = parent.undoRequestID
             self.lastRedoRequestID = parent.redoRequestID
         }
 
-        func install(on container: PaperViewportContainer) {
-            container.canvas.delegate = self
-
-            let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handleViewportPan(_:)))
-            panGesture.minimumNumberOfTouches = 2
-            panGesture.maximumNumberOfTouches = 2
-            panGesture.cancelsTouchesInView = true
-            panGesture.delegate = self
-            container.addGestureRecognizer(panGesture)
-
-            let pinchGesture = UIPinchGestureRecognizer(target: self, action: #selector(handleViewportPinch(_:)))
-            pinchGesture.cancelsTouchesInView = true
-            pinchGesture.delegate = self
-            container.addGestureRecognizer(pinchGesture)
+        func install(on hostViewController: PaperKitHostViewController) {
+            hostViewController.makePaperViewController = { [weak self] in
+                guard let self else { return nil }
+                return self.makePaperViewController()
+            }
         }
 
-        func update(_ container: PaperViewportContainer) {
-            container.updatePaper(grid: parent.grid, prompt: parent.prompt, showsGuides: parent.showsGuides)
+        func update(_ hostViewController: PaperKitHostViewController) {
+            guard let viewController = hostViewController.paperViewController else { return }
+            update(viewController)
+        }
 
-            let requiresViewportReset =
-                lastPaperSize != parent.paperSize ||
-                lastViewportResetID != parent.viewportResetID
-            if requiresViewportReset {
-                lastPaperSize = parent.paperSize
-                lastViewportResetID = parent.viewportResetID
-                container.resetViewport(paperSize: parent.paperSize, grid: parent.grid)
-                lastAppliedScale = nil
+        private func makePaperViewController() -> PaperMarkupViewController {
+            let viewController = PaperMarkupViewController(
+                markup: makeMarkup(),
+                supportedFeatureSet: .latest
+            )
+            viewController.delegate = self
+            viewController.zoomRange = 0.25...3
+            // Keep direct (finger) input in drawing mode. Letting PaperKit
+            // choose automatically can switch a finger back to selection mode
+            // as Pencil availability changes.
+            viewController.directTouchMode = .drawing
+            viewController.directTouchAutomaticallyDraws = false
+            viewController.isEditable = true
+            viewController.drawingTool = tool()
+
+            let paperHost = UIHostingController(rootView: AnyView(parent.paperView))
+            paperHost.view.backgroundColor = .clear
+            paperHost.view.isOpaque = false
+            paperHost.view.frame = ManuscriptPaperCoordinateSpace.bounds(for: parent.grid)
+            viewController.contentView = paperHost.view
+            self.paperHost = paperHost
+            recordInstalledPaperAppearance()
+            installedTool = parent.selectedTool
+            installedStrokeWidth = parent.strokeWidth
+            recordInstalledMarkup()
+            resetVisibleFrame(on: viewController)
+            return viewController
+        }
+
+        private func update(_ viewController: PaperMarkupViewController) {
+            updatePaperAppearanceIfNeeded(on: viewController)
+            updateDrawingToolIfNeeded(on: viewController)
+
+            let changedDocument = lastViewportResetID != parent.viewportResetID
+            let receivedExternalMarkup = lastInputMarkupData != parent.markupData
+            if changedDocument || receivedExternalMarkup {
+                viewController.markup = makeMarkup()
+                recordInstalledMarkup()
+                resetVisibleFrame(on: viewController)
             }
-
-            let renderScale = container.renderScale
-            container.canvas.tool = tool(for: parent.selectedTool, visibleScale: renderScale)
-
-            guard !isViewportGestureActive else { return }
-            apply(parent.drawingData, to: container.canvas, at: renderScale)
 
             if lastClearRequestID != parent.clearRequestID {
                 lastClearRequestID = parent.clearRequestID
-                apply(Data(), to: container.canvas, at: renderScale, force: true)
+                viewController.markup = PaperMarkup(
+                    bounds: ManuscriptPaperCoordinateSpace.bounds(for: parent.grid)
+                )
+                lastInputMarkupData = nil
+                resetVisibleFrame(on: viewController)
             }
             if lastUndoRequestID != parent.undoRequestID {
                 lastUndoRequestID = parent.undoRequestID
-                container.canvas.undoManager?.undo()
+                viewController.undoManager?.undo()
             }
             if lastRedoRequestID != parent.redoRequestID {
                 lastRedoRequestID = parent.redoRequestID
-                container.canvas.undoManager?.redo()
+                viewController.undoManager?.redo()
             }
         }
 
-        @objc private func handleViewportPan(_ recognizer: UIPanGestureRecognizer) {
-            guard let container = recognizer.view as? PaperViewportContainer else { return }
+        func paperMarkupViewControllerDidChangeMarkup(_ paperMarkupViewController: PaperMarkupViewController) {
+            guard let markup = paperMarkupViewController.markup else { return }
+            serializationGeneration += 1
+            let generation = serializationGeneration
 
-            switch recognizer.state {
-            case .began:
-                isPanActive = true
-                beginViewportGesture(on: container)
-            case .changed:
-                let translation = recognizer.translation(in: container)
-                container.pan(by: translation)
-                recognizer.setTranslation(.zero, in: container)
-            case .ended, .cancelled, .failed:
-                isPanActive = false
-                endViewportGestureIfNeeded(on: container)
-            default:
-                break
+            // PaperKit may report several changes while it is completing one
+            // stroke. Serializing each intermediate document makes the main
+            // actor compete with its renderer and was freezing the canvas at
+            // the end of a Pencil stroke. Persist the settled result instead.
+            markupSerializationTask?.cancel()
+            markupSerializationTask = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(450))
+                guard !Task.isCancelled else { return }
+                guard let data = try? await markup.dataRepresentation() else { return }
+                guard
+                    let self,
+                    !Task.isCancelled,
+                    generation == self.serializationGeneration
+                else { return }
+                self.lastInputMarkupData = data
+                self.parent.onMarkupChange(data)
             }
         }
 
-        @objc private func handleViewportPinch(_ recognizer: UIPinchGestureRecognizer) {
-            guard let container = recognizer.view as? PaperViewportContainer else { return }
+        func paperMarkupViewControllerDidChangeSelection(_ paperMarkupViewController: PaperMarkupViewController) {}
+        func paperMarkupViewControllerDidBeginDrawing(_ paperMarkupViewController: PaperMarkupViewController) {}
+        func paperMarkupViewControllerDidChangeContentVisibleFrame(_ paperMarkupViewController: PaperMarkupViewController) {}
 
-            switch recognizer.state {
-            case .began:
-                isPinchActive = true
-                beginViewportGesture(on: container)
-            case .changed:
-                container.zoom(by: recognizer.scale)
-                recognizer.scale = 1
-            case .ended, .cancelled, .failed:
-                isPinchActive = false
-                endViewportGestureIfNeeded(on: container)
-            default:
-                break
+        func makeMarkup() -> PaperMarkup {
+            if let markupData = parent.markupData,
+               let markup = try? PaperMarkup(dataRepresentation: markupData) {
+                return markup
             }
-        }
 
-        func gestureRecognizer(
-            _ gestureRecognizer: UIGestureRecognizer,
-            shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
-        ) -> Bool {
-            true
-        }
+            var markup = PaperMarkup(bounds: ManuscriptPaperCoordinateSpace.bounds(for: parent.grid))
+            guard
+                !parent.drawingData.isEmpty,
+                let legacyDrawing = try? PKDrawing(data: parent.drawingData)
+            else { return markup }
 
-        func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
-            guard !isApplyingDrawing, !isViewportGestureActive else { return }
-            let renderScale = lastAppliedScale ?? 1
-            let drawingData = sourceDrawingData(from: canvasView.drawing, at: renderScale)
-            lastAppliedDrawingData = drawingData
-            lastAppliedScale = renderScale
-            parent.onDrawingChange(
-                drawingData,
-                CGSize(
-                    width: canvasView.bounds.width / renderScale,
-                    height: canvasView.bounds.height / renderScale
-                )
+            let sourceSize = parent.drawingCanvasSize.width > 0 && parent.drawingCanvasSize.height > 0
+                ? parent.drawingCanvasSize
+                : ManuscriptPaperCoordinateSpace.gridRect(for: parent.grid).size
+            let destination = ManuscriptPaperCoordinateSpace.gridRect(for: parent.grid)
+            let transform = CGAffineTransform(
+                a: destination.width / sourceSize.width,
+                b: 0,
+                c: 0,
+                d: destination.height / sourceSize.height,
+                tx: destination.minX,
+                ty: destination.minY
             )
+            markup.append(contentsOf: legacyDrawing.transformed(using: transform))
+            return markup
         }
 
-        private func beginViewportGesture(on container: PaperViewportContainer) {
-            guard !isViewportGestureActive else { return }
-            isViewportGestureActive = true
-            drawingDataBeforeViewportGesture = lastAppliedDrawingData ?? parent.drawingData
-            container.beginLiveViewportPreview()
-            apply(drawingDataBeforeViewportGesture ?? Data(), to: container.canvas, at: 1, force: true)
-            container.canvas.drawingPolicy = .pencilOnly
-        }
-
-        private func endViewportGestureIfNeeded(on container: PaperViewportContainer) {
-            guard !isPanActive, !isPinchActive, isViewportGestureActive else { return }
-            let drawingData = drawingDataBeforeViewportGesture ?? parent.drawingData
-            container.endLiveViewportPreview(grid: parent.grid)
-            let renderScale = container.renderScale
-            apply(drawingData, to: container.canvas, at: renderScale, force: true)
-            container.canvas.tool = tool(for: parent.selectedTool, visibleScale: renderScale)
-            container.canvas.drawingPolicy = .anyInput
-            drawingDataBeforeViewportGesture = nil
-            isViewportGestureActive = false
-        }
-
-        private func apply(_ data: Data, to canvasView: PKCanvasView, at scale: CGFloat, force: Bool = false) {
-            let hasSameScale = lastAppliedScale.map { abs($0 - scale) <= 0.0001 } ?? false
-            guard force || lastAppliedDrawingData != data || !hasSameScale else { return }
-
-            isApplyingDrawing = true
-            canvasView.drawing = displayDrawing(from: data, at: scale)
-            isApplyingDrawing = false
-            lastAppliedDrawingData = data
-            lastAppliedScale = scale
-        }
-
-        private func tool(for selection: WritingTool, visibleScale: CGFloat) -> any PKTool {
+        func tool() -> any PKTool {
             let width = min(
                 max(parent.strokeWidth, WritingTool.minimumStrokeWidth),
                 WritingTool.maximumStrokeWidth
-            ) * visibleScale
+            )
 
-            return switch selection {
+            return switch parent.selectedTool {
             case .brush:
                 PKInkingTool(.fountainPen, color: InkColor.sumi, width: width)
             case .pencil:
@@ -213,17 +209,51 @@ struct PaperViewportView: UIViewRepresentable {
             }
         }
 
-        private func displayDrawing(from data: Data, at scale: CGFloat) -> PKDrawing {
-            let drawing = (try? PKDrawing(data: data)) ?? PKDrawing()
-            guard scale != 1 else { return drawing }
-            return drawing.transformed(using: CGAffineTransform(scaleX: scale, y: scale))
+        func recordInstalledMarkup() {
+            lastViewportResetID = parent.viewportResetID
+            lastInputMarkupData = parent.markupData
         }
 
-        private func sourceDrawingData(from drawing: PKDrawing, at scale: CGFloat) -> Data {
-            guard scale != 1 else { return drawing.dataRepresentation() }
-            return drawing
-                .transformed(using: CGAffineTransform(scaleX: 1 / scale, y: 1 / scale))
-                .dataRepresentation()
+        private func recordInstalledPaperAppearance() {
+            installedGrid = parent.grid
+            installedPrompt = parent.prompt
+            installedShowsGuides = parent.showsGuides
+        }
+
+        /// A PaperKit markup callback changes `markupData`, which causes SwiftUI
+        /// to call `updateUIViewController`. Rebuilding `contentView` there
+        /// makes PaperKit re-layout and report another markup change, creating
+        /// an unbounded render/persistence loop. Only rebuild paper content
+        /// when its visible inputs actually changed.
+        private func updatePaperAppearanceIfNeeded(on viewController: PaperMarkupViewController) {
+            guard
+                installedGrid != parent.grid ||
+                installedPrompt != parent.prompt ||
+                installedShowsGuides != parent.showsGuides
+            else { return }
+
+            paperHost?.rootView = AnyView(parent.paperView)
+            paperHost?.view.frame = ManuscriptPaperCoordinateSpace.bounds(for: parent.grid)
+            recordInstalledPaperAppearance()
+            viewController.contentView = paperHost?.view
+        }
+
+        private func updateDrawingToolIfNeeded(on viewController: PaperMarkupViewController) {
+            guard
+                installedTool != parent.selectedTool ||
+                installedStrokeWidth != parent.strokeWidth
+            else { return }
+
+            installedTool = parent.selectedTool
+            installedStrokeWidth = parent.strokeWidth
+            viewController.drawingTool = tool()
+        }
+
+        func resetVisibleFrame(on viewController: PaperMarkupViewController) {
+            let bounds = ManuscriptPaperCoordinateSpace.bounds(for: parent.grid)
+            DispatchQueue.main.async {
+                viewController.setContentVisibleFrame(bounds, animated: false)
+            }
         }
     }
 
@@ -234,149 +264,67 @@ struct PaperViewportView: UIViewRepresentable {
 }
 
 @MainActor
-final class PaperViewportContainer: UIView {
-    let canvas = PKCanvasView()
-    private let contentView = UIView()
-    private var paperHost: UIHostingController<ManuscriptPaperView>?
-    private var paperSize = CGSize.zero
-    private var grid = ManuscriptGrid.standard400
-    private var scale: CGFloat = 1
-    private var offset = CGSize.zero
-    private var isShowingLivePreview = false
+final class PaperKitHostViewController: UIViewController {
+    var makePaperViewController: (() -> PaperMarkupViewController?)?
+    private(set) var paperViewController: PaperMarkupViewController?
+    private var hasRequestedPaperViewController = false
 
-    var renderScale: CGFloat { isShowingLivePreview ? 1 : scale }
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        clipsToBounds = true
-        backgroundColor = .clear
-
-        contentView.clipsToBounds = false
-        addSubview(contentView)
-
-        canvas.backgroundColor = .clear
-        canvas.isOpaque = false
-        canvas.isScrollEnabled = false
-        canvas.drawingPolicy = .anyInput
-        contentView.addSubview(canvas)
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .clear
     }
 
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard !hasRequestedPaperViewController else { return }
+        hasRequestedPaperViewController = true
 
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        guard paperSize.width > 0, paperSize.height > 0 else { return }
-        if isShowingLivePreview {
-            updateLivePreviewTransform()
-        } else {
-            layoutSharpPaper()
+        // Let SwiftUI replace its startup progress view before PaperKit creates
+        // its renderer. PaperKit then receives a fully attached view hierarchy.
+        DispatchQueue.main.async { [weak self] in
+            self?.installPaperViewController()
         }
     }
 
-    func updatePaper(grid: ManuscriptGrid, prompt: PracticePrompt, showsGuides: Bool) {
-        self.grid = grid
-        let paper = ManuscriptPaperView(grid: grid, prompt: prompt, showsGuides: showsGuides)
-        if let paperHost {
-            paperHost.rootView = paper
-        } else {
-            let paperHost = UIHostingController(rootView: paper)
-            paperHost.view.backgroundColor = .clear
-            paperHost.view.isOpaque = false
-            contentView.insertSubview(paperHost.view, belowSubview: canvas)
-            self.paperHost = paperHost
-        }
+    private func installPaperViewController() {
+        guard let paperViewController = makePaperViewController?() else { return }
+        addChild(paperViewController)
+        paperViewController.view.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(paperViewController.view)
+        NSLayoutConstraint.activate([
+            paperViewController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            paperViewController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            paperViewController.view.topAnchor.constraint(equalTo: view.topAnchor),
+            paperViewController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        paperViewController.didMove(toParent: self)
+        self.paperViewController = paperViewController
     }
+}
 
-    func resetViewport(paperSize: CGSize, grid: ManuscriptGrid) {
-        self.paperSize = paperSize
-        self.grid = grid
-        scale = 1
-        offset = .zero
-        isShowingLivePreview = false
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        layoutSharpPaper()
-        CATransaction.commit()
-    }
+enum ManuscriptPaperCoordinateSpace {
+    private static let gridWidth: CGFloat = 1_000
 
-    func beginLiveViewportPreview() {
-        guard !isShowingLivePreview else { return }
-        isShowingLivePreview = true
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        contentView.transform = .identity
-        contentView.bounds = CGRect(origin: .zero, size: paperSize)
-        contentView.center = viewportCenter(offset: offset)
-        paperHost?.view.frame = contentView.bounds
-        canvas.frame = gridRect(in: paperSize, grid: grid)
-        updateLivePreviewTransform()
-        CATransaction.commit()
-    }
-
-    func endLiveViewportPreview(grid: ManuscriptGrid) {
-        self.grid = grid
-        isShowingLivePreview = false
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        layoutSharpPaper()
-        CATransaction.commit()
-    }
-
-    func pan(by translation: CGPoint) {
-        offset = clampedOffset(
-            CGSize(width: offset.width + translation.x, height: offset.height + translation.y)
-        )
-        updateLivePreviewTransform()
-    }
-
-    func zoom(by scaleDelta: CGFloat) {
-        scale = min(max(scale * scaleDelta, 1), 3)
-        offset = clampedOffset(offset)
-        updateLivePreviewTransform()
-    }
-
-    private func layoutSharpPaper() {
-        let scaledPaperSize = CGSize(width: paperSize.width * scale, height: paperSize.height * scale)
-        contentView.transform = .identity
-        contentView.bounds = CGRect(origin: .zero, size: scaledPaperSize)
-        contentView.center = viewportCenter(offset: offset)
-        paperHost?.view.frame = contentView.bounds
-        canvas.frame = gridRect(in: scaledPaperSize, grid: grid)
-    }
-
-    private func updateLivePreviewTransform() {
-        guard isShowingLivePreview else { return }
-        contentView.center = viewportCenter(offset: offset)
-        contentView.transform = CGAffineTransform(scaleX: scale, y: scale)
-    }
-
-    private func viewportCenter(offset: CGSize) -> CGPoint {
-        CGPoint(x: bounds.midX + offset.width, y: bounds.midY + offset.height)
-    }
-
-    private func clampedOffset(_ proposedOffset: CGSize) -> CGSize {
-        let horizontalLimit = max((paperSize.width * scale - bounds.width) / 2, 0)
-        let verticalLimit = max((paperSize.height * scale - bounds.height) / 2, 0)
+    static func paperSize(for grid: ManuscriptGrid) -> CGSize {
+        let gridRect = gridRect(for: grid)
         return CGSize(
-            width: min(max(proposedOffset.width, -horizontalLimit), horizontalLimit),
-            height: min(max(proposedOffset.height, -verticalLimit), verticalLimit)
+            width: gridRect.maxX + ManuscriptPaperView.gridInset,
+            height: gridRect.maxY + ManuscriptPaperView.gridInset
         )
     }
 
-    private func gridRect(in paperSize: CGSize, grid: ManuscriptGrid) -> CGRect {
-        let scale = paperSize.width / self.paperSize.width
-        let inset = ManuscriptPaperView.gridInset * scale
-        let headerHeight = ManuscriptPaperView.headerHeight * scale
-        let headerSpacing = ManuscriptPaperView.headerSpacing * scale
-        let gridWidth = paperSize.width - inset * 2
-        let gridHeight = gridWidth / ManuscriptPaperView.gridAspectRatio(for: grid)
-        return CGRect(
-            x: inset,
-            y: inset + headerHeight + headerSpacing,
+    static func bounds(for grid: ManuscriptGrid) -> CGRect {
+        CGRect(origin: .zero, size: paperSize(for: grid))
+    }
+
+    static func gridRect(for grid: ManuscriptGrid) -> CGRect {
+        CGRect(
+            x: ManuscriptPaperView.gridInset,
+            y: ManuscriptPaperView.gridInset
+                + ManuscriptPaperView.headerHeight
+                + ManuscriptPaperView.headerSpacing,
             width: gridWidth,
-            height: gridHeight
+            height: gridWidth / ManuscriptPaperView.gridAspectRatio(for: grid)
         )
     }
 }

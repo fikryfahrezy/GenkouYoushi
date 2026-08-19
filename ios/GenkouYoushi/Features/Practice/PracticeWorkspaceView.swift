@@ -130,26 +130,23 @@ struct PracticeWorkspaceView: View {
             workspaceHeader(canToggleReferencePanel: canToggleReferencePanel)
                 .zIndex(1)
 
-            GeometryReader { geometry in
-                let toolShelfHeight: CGFloat = 68
-                let availableWidth = max(geometry.size.width - 48, 100)
-                let availableHeight = max(geometry.size.height - toolShelfHeight - 36, 100)
-                let paperSize = fittedPaperSize(width: availableWidth, height: availableHeight, grid: model.grid)
+            GeometryReader { _ in
                 VStack(spacing: 0) {
-                    PaperViewportView(
+                    PaperKitViewportView(
                         grid: model.grid,
                         prompt: model.prompt,
                         showsGuides: model.showsGuides,
-                        paperSize: paperSize,
                         viewportResetID: "\(model.activeDocumentID.uuidString)-\(model.grid.columns)x\(model.grid.rows)",
+                        markupData: model.markupData,
                         drawingData: model.drawingData,
+                        drawingCanvasSize: model.drawingCanvasSize,
                         selectedTool: model.selectedTool,
                         strokeWidth: model.strokeWidth,
                         clearRequestID: model.clearRequestID,
                         undoRequestID: model.undoRequestID,
                         redoRequestID: model.redoRequestID,
-                        onDrawingChange: { data, size in
-                            model.drawingDidChange(data: data, canvasSize: size)
+                        onMarkupChange: { data in
+                            model.markupDidChange(data: data)
                         }
                     )
 
@@ -180,8 +177,10 @@ struct PracticeWorkspaceView: View {
                     model.redo()
                 }
                 headerButton(systemImage: "square.and.arrow.up", label: "Export") {
-                    exportDocument = model.exportPDF()
-                    isExporting = true
+                    Task {
+                        exportDocument = await model.exportPDF()
+                        isExporting = true
+                    }
                 }
 
                 if canToggleReferencePanel {
@@ -622,31 +621,6 @@ struct PracticeWorkspaceView: View {
                 .fontWeight(.semibold)
         }
         .font(.system(size: 12, design: .rounded))
-    }
-
-    private func fittedPaperSize(width: CGFloat, height: CGFloat, grid: ManuscriptGrid) -> CGSize {
-        let horizontalInset = ManuscriptPaperView.gridInset * 2
-        let verticalInset = ManuscriptPaperView.gridInset * 2
-        let headerHeight = ManuscriptPaperView.headerHeight + ManuscriptPaperView.headerSpacing
-        let gridAspectRatio = ManuscriptPaperView.gridAspectRatio(for: grid)
-        let minimumPaperWidth = horizontalInset + 40
-        let minimumPaperHeight = verticalInset + headerHeight + 40
-
-        func paperHeight(for paperWidth: CGFloat) -> CGFloat {
-            let gridWidth = max(paperWidth - horizontalInset, 40)
-            return verticalInset + headerHeight + gridWidth / gridAspectRatio
-        }
-
-        let heightFromAvailableWidth = paperHeight(for: width)
-        if heightFromAvailableWidth <= height {
-            return CGSize(width: width, height: heightFromAvailableWidth)
-        }
-
-        let gridWidthFromAvailableHeight = max(height - verticalInset - headerHeight, 40) * gridAspectRatio
-        return CGSize(
-            width: max(min(gridWidthFromAvailableHeight + horizontalInset, width), minimumPaperWidth),
-            height: max(height, minimumPaperHeight)
-        )
     }
 
 }
