@@ -1,4 +1,3 @@
-import PaperKit
 import PencilKit
 import SwiftUI
 import UniformTypeIdentifiers
@@ -26,10 +25,9 @@ struct PDFExportDocument: FileDocument {
 }
 
 enum ManuscriptPDFRenderer {
-    static func render(document: PracticeDocument) async -> Data {
+    static func render(document: PracticeDocument) -> Data {
         let page = CGRect(x: 0, y: 0, width: 595, height: 842)
         let renderer = UIGraphicsPDFRenderer(bounds: page)
-        let ink = await renderedInk(for: document)
 
         return renderer.pdfData { context in
             context.beginPage()
@@ -62,7 +60,7 @@ enum ManuscriptPDFRenderer {
 
             drawGrid(document: document, in: gridRect, cell: cell, gap: gap, context: cg)
             drawHeader(document: document, gridRect: gridRect, headerY: margin)
-            ink?.draw(in: gridRect)
+            drawInk(document: document, in: gridRect)
         }
     }
 
@@ -122,45 +120,15 @@ enum ManuscriptPDFRenderer {
         )
     }
 
-    private static func renderedInk(for document: PracticeDocument) async -> UIImage? {
-        if let markupData = document.markupData,
-           let markup = try? PaperMarkup(dataRepresentation: markupData) {
-            let paperBounds = ManuscriptPaperCoordinateSpace.bounds(for: document.grid)
-            let gridRect = ManuscriptPaperCoordinateSpace.gridRect(for: document.grid)
-            let scale: CGFloat = 3
-            let width = Int((paperBounds.width * scale).rounded(.up))
-            let height = Int((paperBounds.height * scale).rounded(.up))
-            guard let context = CGContext(
-                data: nil,
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bytesPerRow: 0,
-                space: CGColorSpaceCreateDeviceRGB(),
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-            ) else { return nil }
-
-            context.scaleBy(x: scale, y: scale)
-            await markup.draw(in: context, frame: paperBounds)
-            guard let image = context.makeImage() else { return nil }
-            let cropRect = CGRect(
-                x: gridRect.minX * scale,
-                y: gridRect.minY * scale,
-                width: gridRect.width * scale,
-                height: gridRect.height * scale
-            ).integral
-            guard let croppedImage = image.cropping(to: cropRect) else { return nil }
-            return UIImage(cgImage: croppedImage, scale: scale, orientation: .up)
-        }
-
+    private static func drawInk(document: PracticeDocument, in rect: CGRect) {
         guard
             !document.drawingData.isEmpty,
             document.drawingCanvasSize.width > 0,
             document.drawingCanvasSize.height > 0,
             let drawing = try? PKDrawing(data: document.drawingData)
-        else { return nil }
+        else { return }
 
         let source = CGRect(origin: .zero, size: document.drawingCanvasSize)
-        return drawing.image(from: source, scale: 3)
+        drawing.image(from: source, scale: 2).draw(in: rect)
     }
 }

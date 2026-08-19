@@ -29,9 +29,6 @@ nonisolated struct PracticeDocument: Codable, Equatable, Identifiable, Sendable 
     var prompt: PracticePrompt
     var grid: ManuscriptGrid
     var showsGuides: Bool
-    /// PaperKit's serialized markup. `nil` identifies documents created before
-    /// the PaperKit migration and lets us import their legacy PKDrawing data.
-    var markupData: Data?
     var drawingData: Data
     var drawingCanvasSize: CGSize
     var createdAt: Date
@@ -45,7 +42,6 @@ nonisolated struct PracticeDocument: Codable, Equatable, Identifiable, Sendable 
             prompt: prompt,
             grid: grid,
             showsGuides: true,
-            markupData: nil,
             drawingData: Data(),
             drawingCanvasSize: .zero,
             createdAt: now,

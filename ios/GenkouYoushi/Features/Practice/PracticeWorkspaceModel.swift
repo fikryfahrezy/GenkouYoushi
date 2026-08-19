@@ -14,7 +14,6 @@ final class PracticeWorkspaceModel {
     var clearRequestID = UUID()
     var undoRequestID = UUID()
     var redoRequestID = UUID()
-    var markupData: Data?
     var drawingData = Data()
     var drawingCanvasSize = CGSize.zero
     var documents: [PracticeDocument] = []
@@ -54,6 +53,7 @@ final class PracticeWorkspaceModel {
     func loadDocuments() async {
         guard !hasStartedLoadingDocuments else { return }
         hasStartedLoadingDocuments = true
+        defer { isLoadingDocuments = false }
 
         do {
             let stored = try await repository.loadAll()
@@ -61,17 +61,11 @@ final class PracticeWorkspaceModel {
                 documents = stored
                 apply(first)
             } else {
-                // Never keep the whole workspace behind the loading screen while
-                // a first-run save (or legacy-document recovery) is in progress.
-                isLoadingDocuments = false
                 await saveNow()
-                return
             }
         } catch {
             errorMessage = error.localizedDescription
         }
-
-        isLoadingDocuments = false
     }
 
     func lookupKanji() async {
@@ -109,14 +103,14 @@ final class PracticeWorkspaceModel {
         isRecognizingKanji = false
     }
 
-    func markupDidChange(data: Data) {
-        markupData = data
+    func drawingDidChange(data: Data, canvasSize: CGSize) {
+        drawingData = data
+        drawingCanvasSize = canvasSize
         statusMessage = "Editing"
         scheduleSave()
     }
 
     func clearDrawing() {
-        markupData = nil
         drawingData = Data()
         clearRequestID = UUID()
         statusMessage = "Cleared"
@@ -183,8 +177,8 @@ final class PracticeWorkspaceModel {
         isSaving = false
     }
 
-    func exportPDF() async -> PDFExportDocument {
-        PDFExportDocument(data: await ManuscriptPDFRenderer.render(document: snapshot()))
+    func exportPDF() -> PDFExportDocument {
+        PDFExportDocument(data: ManuscriptPDFRenderer.render(document: snapshot()))
     }
 
     var exportFilename: String {
@@ -208,7 +202,6 @@ final class PracticeWorkspaceModel {
             prompt: prompt,
             grid: grid,
             showsGuides: showsGuides,
-            markupData: markupData,
             drawingData: drawingData,
             drawingCanvasSize: drawingCanvasSize,
             createdAt: createdAt,
@@ -223,7 +216,6 @@ final class PracticeWorkspaceModel {
         grid = document.grid
         prompt = document.prompt
         showsGuides = document.showsGuides
-        markupData = document.markupData
         drawingData = document.drawingData
         drawingCanvasSize = document.drawingCanvasSize
         kanjiQuery = document.prompt.character
