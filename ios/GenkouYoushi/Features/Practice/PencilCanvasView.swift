@@ -174,11 +174,13 @@ struct PaperViewportView: UIViewRepresentable {
         private func endViewportGestureIfNeeded(on container: PaperViewportContainer) {
             guard !isPanActive, !isPinchActive, isViewportGestureActive else { return }
             let drawingData = drawingDataBeforeViewportGesture ?? parent.drawingData
+            container.captureLivePreviewForHandoff()
             container.endLiveViewportPreview(grid: parent.grid)
             let renderScale = container.renderScale
             apply(drawingData, to: container.canvas, at: renderScale, force: true)
             container.canvas.tool = tool(for: parent.selectedTool, visibleScale: renderScale)
             container.canvas.drawingPolicy = .anyInput
+            container.finishSharpHandoff()
             drawingDataBeforeViewportGesture = nil
             isViewportGestureActive = false
         }
@@ -259,6 +261,7 @@ final class PaperViewportContainer: UIView {
     private var scale: CGFloat = 1
     private var offset = CGSize.zero
     private var isShowingLivePreview = false
+    private var handoffView: UIView?
 
     var renderScale: CGFloat { isShowingLivePreview ? 1 : scale }
 
@@ -318,6 +321,7 @@ final class PaperViewportContainer: UIView {
     }
 
     func resetViewport(paperSize: CGSize, grid: ManuscriptGrid) {
+        removeHandoffView()
         self.paperSize = paperSize
         self.grid = grid
         scale = 1
@@ -332,6 +336,7 @@ final class PaperViewportContainer: UIView {
 
     func beginLiveViewportPreview() {
         guard !isShowingLivePreview else { return }
+        removeHandoffView()
         isShowingLivePreview = true
         updatePaperHost()
         CATransaction.begin()
@@ -354,6 +359,36 @@ final class PaperViewportContainer: UIView {
         CATransaction.setDisableActions(true)
         layoutSharpPaper()
         CATransaction.commit()
+    }
+
+    /// Preserve the final smooth frame while PencilKit commits its sharp
+    /// drawing. This hides the single-frame gap between transform preview and
+    /// the new canvas contents.
+    func captureLivePreviewForHandoff() {
+        removeHandoffView()
+        guard let snapshot = snapshotView(afterScreenUpdates: false) else { return }
+        snapshot.frame = bounds
+        snapshot.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        addSubview(snapshot)
+        handoffView = snapshot
+    }
+
+    func finishSharpHandoff() {
+        guard let handoffView else { return }
+        DispatchQueue.main.async { [weak self, weak handoffView] in
+            guard let self, let handoffView, self.handoffView === handoffView else { return }
+            UIView.animate(
+                withDuration: 0.08,
+                delay: 0.02,
+                options: [.beginFromCurrentState, .curveEaseOut]
+            ) {
+                handoffView.alpha = 0
+            } completion: { [weak self, weak handoffView] _ in
+                guard let self, let handoffView, self.handoffView === handoffView else { return }
+                handoffView.removeFromSuperview()
+                self.handoffView = nil
+            }
+        }
     }
 
     func pan(by translation: CGPoint) {
@@ -411,5 +446,10 @@ final class PaperViewportContainer: UIView {
             width: gridWidth,
             height: gridHeight
         )
+    }
+
+    private func removeHandoffView() {
+        handoffView?.removeFromSuperview()
+        handoffView = nil
     }
 }
