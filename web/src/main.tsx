@@ -324,7 +324,6 @@ function App() {
                 <div ref={guideLayer} class="guide-layer" aria-hidden="true" />
                 <canvas ref={inkCanvas} class="ink-canvas" />
               </div>
-              <div class="gesture-hint">Write with Pencil or one finger · Pinch with two fingers</div>
             </div>
 
             <div class="tool-shelf" role="toolbar" aria-label="Writing tools">
@@ -378,7 +377,6 @@ function App() {
               <p class="card-title">SESSION</p>
               <div><span>Paper</span><strong class="paper-size">{active() ? `${active()!.grid.columns} × ${active()!.grid.rows}` : "20 × 20"}</strong></div>
               <div><span>Capacity</span><strong class="paper-capacity">{active() ? `${active()!.grid.columns * active()!.grid.rows} 字` : "400 字"}</strong></div>
-              <div><span>Storage</span><strong>On this iPad</strong></div>
             </div>
           </aside>
           <div class="drawer-scrim" onClick={() => setReferenceOpen(false)} />
