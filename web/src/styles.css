@@ -313,6 +313,14 @@ button:disabled {
   cursor: crosshair;
 }
 
+.ink-canvas.is-pan-ready {
+  cursor: grab;
+}
+
+.ink-canvas.is-panning {
+  cursor: grabbing;
+}
+
 .tool-shelf {
   display: flex;
   flex: 0 0 68px;

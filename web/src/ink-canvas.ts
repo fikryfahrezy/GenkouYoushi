@@ -46,6 +46,11 @@ export class PaperCanvas {
   private gestureStart:
     | { distance: number; center: TouchLocation; scale: number; offsetX: number; offsetY: number }
     | undefined;
+  private panStart:
+    | { pointerId: number; x: number; y: number; offsetX: number; offsetY: number }
+    | undefined;
+  private pointerInside = false;
+  private spacePressed = false;
   private scale = 1;
   private offsetX = 0;
   private offsetY = 0;
@@ -76,8 +81,13 @@ export class PaperCanvas {
     this.inkCanvas.addEventListener("pointermove", this.handlePointerMove);
     this.inkCanvas.addEventListener("pointerup", this.handlePointerUp);
     this.inkCanvas.addEventListener("pointercancel", this.handlePointerUp);
+    this.inkCanvas.addEventListener("pointerenter", this.handlePointerEnter);
+    this.inkCanvas.addEventListener("pointerleave", this.handlePointerLeave);
     this.inkCanvas.addEventListener("contextmenu", (event) => event.preventDefault());
     this.viewport.addEventListener("wheel", this.handleWheel, { passive: false });
+    window.addEventListener("keydown", this.handleKeyDown);
+    window.addEventListener("keyup", this.handleKeyUp);
+    window.addEventListener("blur", this.handleWindowBlur);
 
     this.resizeObserver = new ResizeObserver(() => this.layout());
     this.resizeObserver.observe(this.viewport);
@@ -120,7 +130,12 @@ export class PaperCanvas {
     this.inkCanvas.removeEventListener("pointermove", this.handlePointerMove);
     this.inkCanvas.removeEventListener("pointerup", this.handlePointerUp);
     this.inkCanvas.removeEventListener("pointercancel", this.handlePointerUp);
+    this.inkCanvas.removeEventListener("pointerenter", this.handlePointerEnter);
+    this.inkCanvas.removeEventListener("pointerleave", this.handlePointerLeave);
     this.viewport.removeEventListener("wheel", this.handleWheel);
+    window.removeEventListener("keydown", this.handleKeyDown);
+    window.removeEventListener("keyup", this.handleKeyUp);
+    window.removeEventListener("blur", this.handleWindowBlur);
   }
 
   private layout(): void {
@@ -386,6 +401,17 @@ export class PaperCanvas {
   private handlePointerDown = (event: PointerEvent): void => {
     event.preventDefault();
     this.inkCanvas.setPointerCapture(event.pointerId);
+    if (event.pointerType === "mouse" && (event.button === 1 || (event.button === 0 && this.spacePressed))) {
+      this.panStart = {
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        offsetX: this.offsetX,
+        offsetY: this.offsetY,
+      };
+      this.inkCanvas.classList.add("is-panning");
+      return;
+    }
     if (event.pointerType === "touch") {
       this.touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (this.touches.size >= 2) {
@@ -410,6 +436,13 @@ export class PaperCanvas {
 
   private handlePointerMove = (event: PointerEvent): void => {
     event.preventDefault();
+    if (event.pointerId === this.panStart?.pointerId) {
+      this.offsetX = this.panStart.offsetX + event.clientX - this.panStart.x;
+      this.offsetY = this.panStart.offsetY + event.clientY - this.panStart.y;
+      this.clampOffset();
+      this.applyTransform();
+      return;
+    }
     if (event.pointerType === "touch" && this.touches.has(event.pointerId)) {
       this.touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (this.gestureStart && this.touches.size >= 2) {
@@ -431,6 +464,11 @@ export class PaperCanvas {
 
   private handlePointerUp = (event: PointerEvent): void => {
     event.preventDefault();
+    if (event.pointerId === this.panStart?.pointerId) {
+      this.panStart = undefined;
+      this.inkCanvas.classList.remove("is-panning");
+      return;
+    }
     if (event.pointerType === "touch") this.touches.delete(event.pointerId);
     if (event.pointerId === this.activeStrokePointer) this.finishStroke();
     if (this.touches.size < 2) this.gestureStart = undefined;
@@ -494,12 +532,59 @@ export class PaperCanvas {
   }
 
   private handleWheel = (event: WheelEvent): void => {
-    if (!event.ctrlKey && !event.metaKey) return;
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      this.scale = Math.min(Math.max(this.scale * Math.exp(-event.deltaY * 0.004), 1), 3);
+      this.clampOffset();
+      this.applyTransform();
+      return;
+    }
+    if (this.scale <= 1) return;
     event.preventDefault();
-    this.scale = Math.min(Math.max(this.scale * Math.exp(-event.deltaY * 0.004), 1), 3);
+    const horizontalDelta = event.shiftKey && Math.abs(event.deltaX) < Math.abs(event.deltaY)
+      ? event.deltaY
+      : event.deltaX;
+    this.offsetX -= horizontalDelta;
+    if (!event.shiftKey) this.offsetY -= event.deltaY;
     this.clampOffset();
     this.applyTransform();
   };
+
+  private handlePointerEnter = (): void => {
+    this.pointerInside = true;
+  };
+
+  private handlePointerLeave = (): void => {
+    this.pointerInside = false;
+    if (!this.panStart) this.setSpacePressed(false);
+  };
+
+  private handleKeyDown = (event: KeyboardEvent): void => {
+    if (event.code !== "Space" || !this.pointerInside || this.isTextEntry(event.target)) return;
+    event.preventDefault();
+    this.setSpacePressed(true);
+  };
+
+  private handleKeyUp = (event: KeyboardEvent): void => {
+    if (event.code === "Space") this.setSpacePressed(false);
+  };
+
+  private handleWindowBlur = (): void => {
+    this.panStart = undefined;
+    this.setSpacePressed(false);
+    this.inkCanvas.classList.remove("is-panning");
+  };
+
+  private setSpacePressed(pressed: boolean): void {
+    this.spacePressed = pressed;
+    this.inkCanvas.classList.toggle("is-pan-ready", pressed);
+  }
+
+  private isTextEntry(target: EventTarget | null): boolean {
+    return target instanceof HTMLInputElement
+      || target instanceof HTMLTextAreaElement
+      || (target instanceof HTMLElement && target.isContentEditable);
+  }
 
   private applyTransform(): void {
     this.surface.style.transform = `translate3d(${this.offsetX}px, ${this.offsetY}px, 0) scale(${this.scale})`;
