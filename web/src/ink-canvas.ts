@@ -47,6 +47,7 @@ export class PaperCanvas {
   private activeStrokePointer: number | undefined;
   private activeStrokeWasTouch = false;
   private eraserChanged = false;
+  private lastEraserPoint: InkPoint | undefined;
   private strokesBeforeErase: InkStroke[] | undefined;
   private touches = new Map<number, TouchLocation>();
   private gestureStart:
@@ -462,7 +463,8 @@ export class PaperCanvas {
     this.activeStrokeWasTouch = event.pointerType === "touch";
     if (this.state.tool === "eraser") {
       this.strokesBeforeErase = structuredClone(this.state.strokes);
-      this.eraseStrokesBetween(this.pointFromEvent(event), this.pointFromEvent(event));
+      this.lastEraserPoint = this.pointFromEvent(event);
+      this.eraseStrokesBetween(this.lastEraserPoint, this.lastEraserPoint);
       return;
     }
     this.activeStroke = {
@@ -497,14 +499,9 @@ export class PaperCanvas {
     if (this.state.tool === "eraser") {
       for (const sample of events.length > 0 ? events : [event]) {
         const next = this.pointFromEvent(sample);
-        const previous = this.activeStroke?.points.at(-1) ?? next;
-        this.activeStroke = {
-          id: "eraser-preview",
-          tool: "eraser",
-          width: this.state.width,
-          points: [next],
-        };
+        const previous = this.lastEraserPoint ?? next;
         this.eraseStrokesBetween(previous, next);
+        this.lastEraserPoint = next;
       }
       return;
     }
@@ -544,6 +541,7 @@ export class PaperCanvas {
     this.activeStrokePointer = undefined;
     this.activeStrokeWasTouch = false;
     this.eraserChanged = false;
+    this.lastEraserPoint = undefined;
     this.strokesBeforeErase = undefined;
   }
 
@@ -558,6 +556,7 @@ export class PaperCanvas {
     this.activeStrokePointer = undefined;
     this.activeStrokeWasTouch = false;
     this.eraserChanged = false;
+    this.lastEraserPoint = undefined;
     this.strokesBeforeErase = undefined;
     this.redrawInk();
   }
@@ -600,6 +599,8 @@ export class PaperCanvas {
   }
 
   private segmentDistance(a: TouchLocation, b: TouchLocation, c: TouchLocation, d: TouchLocation): number {
+    if (a.x === b.x && a.y === b.y) return this.pointToSegmentDistance(a, c, d);
+    if (c.x === d.x && c.y === d.y) return this.pointToSegmentDistance(c, a, b);
     if (this.segmentsIntersect(a, b, c, d)) return 0;
     return Math.min(
       this.pointToSegmentDistance(a, c, d),
@@ -623,12 +624,19 @@ export class PaperCanvas {
   private segmentsIntersect(a: TouchLocation, b: TouchLocation, c: TouchLocation, d: TouchLocation): boolean {
     const cross = (p: TouchLocation, q: TouchLocation, r: TouchLocation) =>
       (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
-    const abC = cross(a, b, c);
-    const abD = cross(a, b, d);
-    const cdA = cross(c, d, a);
-    const cdB = cross(c, d, b);
-    return ((abC <= 0 && abD >= 0) || (abC >= 0 && abD <= 0)) &&
-      ((cdA <= 0 && cdB >= 0) || (cdA >= 0 && cdB <= 0));
+    const orientation = (value: number) => Math.abs(value) < 0.000001 ? 0 : Math.sign(value);
+    const onSegment = (point: TouchLocation, from: TouchLocation, to: TouchLocation) =>
+      point.x >= Math.min(from.x, to.x) && point.x <= Math.max(from.x, to.x) &&
+      point.y >= Math.min(from.y, to.y) && point.y <= Math.max(from.y, to.y);
+    const abC = orientation(cross(a, b, c));
+    const abD = orientation(cross(a, b, d));
+    const cdA = orientation(cross(c, d, a));
+    const cdB = orientation(cross(c, d, b));
+    if (abC !== abD && cdA !== cdB) return true;
+    return (abC === 0 && onSegment(c, a, b)) ||
+      (abD === 0 && onSegment(d, a, b)) ||
+      (cdA === 0 && onSegment(a, c, d)) ||
+      (cdB === 0 && onSegment(b, c, d));
   }
 
   private pointFromEvent(event: PointerEvent): InkPoint {
