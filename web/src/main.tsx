@@ -1,5 +1,22 @@
 import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { render } from "solid-js/web";
+import {
+  BookOpen,
+  Download,
+  Eraser,
+  FileDown,
+  ImageUp,
+  PanelRight,
+  PenTool,
+  Pencil,
+  Plus,
+  Redo2,
+  Search,
+  Sheet,
+  Trash2,
+  Undo2,
+  X,
+} from "lucide-solid";
 import "./styles.css";
 import { lookupKanji, prepareImageForOcr, recognizeKanji } from "./api";
 import { deleteDocument, loadDocuments, saveDocument } from "./db";
@@ -293,14 +310,14 @@ function App() {
       <nav class="navigation-rail" aria-label="Main navigation">
         <div class="seal" aria-label="Genkou Youshi">原</div>
         <button classList={{ "nav-button": true, "is-selected": section() === "practice" }} onClick={() => showSection("practice")} type="button">
-          <span class="nav-icon" aria-hidden="true">✎</span><span>Practice</span>
+          <Pencil class="nav-icon" aria-hidden="true" /><span>Practice</span>
         </button>
         <button classList={{ "nav-button": true, "is-selected": section() === "library" }} onClick={() => showSection("library")} type="button">
-          <span class="nav-icon" aria-hidden="true">▤</span><span>Library</span>
+          <BookOpen class="nav-icon" aria-hidden="true" /><span>Library</span>
         </button>
         <span class="nav-spacer" />
         <button class="nav-button install-help" onClick={() => installDialog.showModal()} type="button" aria-label="Install help">
-          <span class="nav-icon" aria-hidden="true">＋</span><span>Install</span>
+          <Download class="nav-icon" aria-hidden="true" /><span>Install</span>
         </button>
       </nav>
 
@@ -308,10 +325,10 @@ function App() {
         <header class="workspace-header">
           <div><p class="eyebrow">GENKOU YOUSHI</p><h1>Writing practice</h1></div>
           <div class="header-actions">
-            <button class="icon-button undo-button" onClick={undo} disabled={undoStack().length === 0} type="button" title="Undo" aria-label="Undo">↶</button>
-            <button class="icon-button redo-button" onClick={redo} disabled={redoStack().length === 0} type="button" title="Redo" aria-label="Redo">↷</button>
-            <button class="export-button" onClick={exportPdf} type="button"><span aria-hidden="true">⇧</span> Export PDF</button>
-            <button class="icon-button reference-toggle" onClick={() => setReferenceOpen((open) => !open)} type="button" title="Reference" aria-label="Toggle reference panel">▥</button>
+            <button class="icon-button undo-button" onClick={undo} disabled={undoStack().length === 0} type="button" title="Undo" aria-label="Undo"><Undo2 aria-hidden="true" /></button>
+            <button class="icon-button redo-button" onClick={redo} disabled={redoStack().length === 0} type="button" title="Redo" aria-label="Redo"><Redo2 aria-hidden="true" /></button>
+            <button class="export-button" onClick={exportPdf} type="button"><FileDown aria-hidden="true" /> <span>Export PDF</span></button>
+            <button class="icon-button reference-toggle" onClick={() => setReferenceOpen((open) => !open)} type="button" title="Reference" aria-label="Toggle reference panel"><PanelRight aria-hidden="true" /></button>
             <span classList={{ "save-status": true, "is-saving": saving() }}><i /><span>{status()}</span></span>
           </div>
         </header>
@@ -327,8 +344,11 @@ function App() {
             </div>
 
             <div class="tool-shelf" role="toolbar" aria-label="Writing tools">
-              <For each={[{ id: "brush", icon: "✒", label: "Fountain" }, { id: "pencil", icon: "✎", label: "Pencil" }, { id: "eraser", icon: "◇", label: "Eraser" }] as const}>
-                {(item) => <button classList={{ "tool-button": true, "is-selected": tool() === item.id }} onClick={() => setTool(item.id)} type="button"><span>{item.icon}</span> {item.label}</button>}
+              <For each={[{ id: "brush", icon: PenTool, label: "Pen" }, { id: "pencil", icon: Pencil, label: "Pencil" }, { id: "eraser", icon: Eraser, label: "Eraser" }] as const}>
+                {(item) => {
+                  const ToolIcon = item.icon;
+                  return <button classList={{ "tool-button": true, "is-selected": tool() === item.id }} onClick={() => setTool(item.id)} type="button"><ToolIcon aria-hidden="true" /> {item.label}</button>;
+                }}
               </For>
               <span class="tool-divider" />
               <label classList={{ "stroke-control": true, "is-disabled": tool() === "eraser" }}>
@@ -337,12 +357,12 @@ function App() {
                 <output class="stroke-width-output">{strokeWidth().toFixed(1)}</output>
               </label>
               <span class="tool-spacer" />
-              <button class="clear-button" onClick={clearDrawing} type="button" aria-label="Clear drawing" title="Clear drawing">⌫</button>
+              <button class="clear-button" onClick={clearDrawing} type="button" aria-label="Clear drawing" title="Clear drawing"><Trash2 aria-hidden="true" /></button>
             </div>
           </div>
 
           <aside class="reference-panel">
-            <div class="drawer-heading"><strong>Reference</strong><button class="drawer-close" onClick={() => setReferenceOpen(false)} type="button" aria-label="Close reference panel">×</button></div>
+            <div class="drawer-heading"><strong>Reference</strong><button class="drawer-close" onClick={() => setReferenceOpen(false)} type="button" aria-label="Close reference panel"><X aria-hidden="true" /></button></div>
             <div class="reference-card kanji-card">
               <div class="card-label"><span>KANJI</span><strong class="stroke-count">{activePrompt()?.strokeOrderSvgs.length ? `${activePrompt()!.strokeOrderSvgs.length} strokes` : "Reference"}</strong></div>
               <div class="kanji-preview">
@@ -352,10 +372,10 @@ function App() {
               </div>
               <form class="kanji-form" onSubmit={(event) => { event.preventDefault(); void performLookup(true); }}>
                 <input ref={kanjiInput} class="kanji-input" type="text" inputmode="text" value={activePrompt()?.character ?? "永"} maxlength="2" aria-label="Kanji" />
-                <button type="submit" disabled={lookingUp()} aria-label="Look up kanji">{lookingUp() ? "…" : "→"}</button>
+                <button type="submit" disabled={lookingUp()} aria-label="Look up kanji">{lookingUp() ? "…" : <Search aria-hidden="true" />}</button>
               </form>
               <button class="photo-button" onClick={() => photoInput.click()} disabled={recognizing()} type="button">
-                <Show when={!recognizing()} fallback="Reading image…"><span aria-hidden="true">▣</span> Recognize from photo</Show>
+                <Show when={!recognizing()} fallback="Reading image…"><ImageUp aria-hidden="true" /> Recognize from photo</Show>
               </button>
               <input ref={photoInput} class="photo-input" onChange={(event) => { const file = event.currentTarget.files?.[0]; if (file) void performOcr(file); event.currentTarget.value = ""; }} type="file" accept="image/*" hidden />
               <div class="ocr-candidates" aria-live="polite">
@@ -386,13 +406,13 @@ function App() {
       <section class="library-section" hidden={section() !== "library"}>
         <header class="library-header">
           <div><p class="eyebrow">LOCAL LIBRARY</p><h1>Practice sheets</h1></div>
-          <button class="new-sheet-button" onClick={() => setNewSheetPickerOpen((open) => !open)} type="button">＋ New sheet</button>
+          <button class="new-sheet-button" onClick={() => setNewSheetPickerOpen((open) => !open)} type="button"><Plus aria-hidden="true" /> New sheet</button>
         </header>
         <div class="new-sheet-picker" hidden={!newSheetPickerOpen()}>
           <div>
             <p class="card-title">CHOOSE PAPER</p>
-            <button class="sheet-choice" onClick={() => void createDocument({ columns: 20, rows: 20 })} type="button"><span class="sheet-icon">▦</span><strong>Standard</strong><small>20 × 20 · 400 characters</small></button>
-            <button class="sheet-choice" onClick={() => void createDocument({ columns: 10, rows: 20 })} type="button"><span class="sheet-icon compact">▦</span><strong>Compact</strong><small>10 × 20 · 200 characters</small></button>
+            <button class="sheet-choice" onClick={() => void createDocument({ columns: 20, rows: 20 })} type="button"><Sheet class="sheet-icon" aria-hidden="true" /><strong>Standard</strong><small>20 × 20 · 400 characters</small></button>
+            <button class="sheet-choice" onClick={() => void createDocument({ columns: 10, rows: 20 })} type="button"><Sheet class="sheet-icon compact" aria-hidden="true" /><strong>Compact</strong><small>10 × 20 · 200 characters</small></button>
           </div>
         </div>
         <div class="document-grid">
@@ -402,14 +422,14 @@ function App() {
                 <span class="document-character">{practiceDocument.prompt.character}</span>
                 <span><strong>{practiceDocument.title}</strong><small>{practiceDocument.grid.columns * practiceDocument.grid.rows} characters · {formatDate(practiceDocument.updatedAt)}</small></span>
               </button>
-              <button class="document-delete" onClick={() => void removeDocument(practiceDocument.id)} type="button" aria-label={`Delete ${practiceDocument.title}`}>⌫</button>
+              <button class="document-delete" onClick={() => void removeDocument(practiceDocument.id)} type="button" aria-label={`Delete ${practiceDocument.title}`}><Trash2 aria-hidden="true" /></button>
             </article>
           )}</For>
         </div>
       </section>
 
       <dialog ref={installDialog} class="install-dialog">
-        <button class="dialog-close" onClick={() => installDialog.close()} type="button" aria-label="Close">×</button>
+        <button class="dialog-close" onClick={() => installDialog.close()} type="button" aria-label="Close"><X aria-hidden="true" /></button>
         <div class="seal dialog-seal">原</div>
         <h2>Install on your iPad</h2>
         <p>Open this site in Safari, tap the Share button, then choose <strong>Add to Home Screen</strong>.</p>

@@ -121,10 +121,9 @@ button:disabled {
 }
 
 .nav-icon {
-  height: 24px;
-  font-family: ui-serif, serif;
-  font-size: 21px;
-  line-height: 24px;
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.8;
 }
 
 .nav-spacer {
@@ -191,9 +190,15 @@ button:disabled {
 }
 
 .icon-button {
+  display: grid;
+  place-items: center;
   width: 34px;
   padding: 0;
-  font-size: 18px;
+}
+
+.icon-button svg {
+  width: 17px;
+  height: 17px;
 }
 
 .export-button {
@@ -204,6 +209,11 @@ button:disabled {
   color: var(--indigo);
   font-size: 11px;
   font-weight: 750;
+}
+
+.export-button svg {
+  width: 15px;
+  height: 15px;
 }
 
 .save-status {
@@ -359,9 +369,9 @@ button:disabled {
   color: var(--paper);
 }
 
-.tool-button span {
-  font-family: ui-serif, serif;
-  font-size: 17px;
+.tool-button svg {
+  width: 17px;
+  height: 17px;
 }
 
 .tool-divider {
@@ -404,6 +414,7 @@ button:disabled {
 }
 
 .clear-button {
+  display: grid;
   flex: 0 0 40px;
   width: 40px;
   height: 40px;
@@ -412,7 +423,12 @@ button:disabled {
   background: var(--vermilion-soft);
   color: var(--vermilion);
   cursor: pointer;
-  font-size: 19px;
+  place-items: center;
+}
+
+.clear-button svg {
+  width: 18px;
+  height: 18px;
 }
 
 .reference-panel {
@@ -492,6 +508,8 @@ button:disabled {
 }
 
 .kanji-form button {
+  display: grid;
+  place-items: center;
   border: 0;
   background: var(--indigo);
   color: var(--paper);
@@ -499,7 +517,16 @@ button:disabled {
   font-size: 18px;
 }
 
+.kanji-form button svg {
+  width: 17px;
+  height: 17px;
+}
+
 .photo-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   width: 100%;
   min-height: 36px;
   margin-top: 8px;
@@ -509,6 +536,11 @@ button:disabled {
   cursor: pointer;
   font-size: 10px;
   font-weight: 750;
+}
+
+.photo-button svg {
+  width: 15px;
+  height: 15px;
 }
 
 .error-message {
@@ -612,6 +644,9 @@ button:disabled {
 }
 
 .new-sheet-button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   height: 38px;
   padding: 0 14px;
   border: 0;
@@ -620,6 +655,11 @@ button:disabled {
   cursor: pointer;
   font-size: 12px;
   font-weight: 750;
+}
+
+.new-sheet-button svg {
+  width: 16px;
+  height: 16px;
 }
 
 .new-sheet-picker {
@@ -655,8 +695,9 @@ button:disabled {
 .sheet-icon {
   grid-row: 1 / 3;
   align-self: center;
+  width: 29px;
+  height: 29px;
   color: var(--grid);
-  font-size: 29px;
 }
 
 .sheet-choice strong {
@@ -734,6 +775,23 @@ button:disabled {
   cursor: pointer;
 }
 
+.document-delete,
+.dialog-close,
+.drawer-close {
+  place-items: center;
+}
+
+.document-delete {
+  display: grid;
+}
+
+.document-delete svg,
+.dialog-close svg,
+.drawer-close svg {
+  width: 16px;
+  height: 16px;
+}
+
 .install-dialog {
   width: min(390px, calc(100% - 40px));
   padding: 28px;
@@ -751,6 +809,7 @@ button:disabled {
 }
 
 .dialog-close {
+  display: grid;
   position: absolute;
   top: 10px;
   right: 10px;
@@ -759,7 +818,6 @@ button:disabled {
   border: 0;
   background: transparent;
   cursor: pointer;
-  font-size: 22px;
 }
 
 .dialog-seal {
@@ -868,9 +926,8 @@ button:disabled {
   }
 
   .nav-icon {
-    height: 21px;
-    font-size: 18px;
-    line-height: 21px;
+    width: 19px;
+    height: 19px;
   }
 
   .practice-section,
@@ -912,7 +969,7 @@ button:disabled {
     padding: 0 10px;
   }
 
-  .tool-button span {
+  .tool-button svg {
     display: none;
   }
 
