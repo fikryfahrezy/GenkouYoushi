@@ -1,6 +1,6 @@
 # Genkou Youshi Web
 
-A framework-free TypeScript PWA port of the iPad app.
+A SolidJS and TypeScript PWA port of the iPad app. Solid owns the reactive UI while the drawing engine remains framework-independent.
 
 ## Local development
 
