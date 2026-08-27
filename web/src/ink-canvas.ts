@@ -474,7 +474,6 @@ export class PaperCanvas {
       points: [this.pointFromEvent(event)],
     };
     this.state.strokes.push(this.activeStroke);
-    this.renderDot(this.activeStroke, this.activeStroke.points[0]);
   };
 
   private handlePointerMove = (event: PointerEvent): void => {
