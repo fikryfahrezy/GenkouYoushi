@@ -28,6 +28,10 @@ const GRID_INSET = 34;
 const HEADER_HEIGHT = 14;
 const HEADER_SPACING = 8;
 const COLUMN_GAP_RATIO = 0.18;
+const MAX_CANVAS_DIMENSION = 8192;
+const MAX_CANVAS_PIXELS = 24_000_000;
+const ZOOM_RENDER_DELAY = 120;
+const ERASER_WIDTH_MULTIPLIER = 2.8;
 
 export class PaperCanvas {
   private readonly viewport: HTMLElement;
@@ -42,6 +46,8 @@ export class PaperCanvas {
   private activeStroke: InkStroke | undefined;
   private activeStrokePointer: number | undefined;
   private activeStrokeWasTouch = false;
+  private eraserChanged = false;
+  private strokesBeforeErase: InkStroke[] | undefined;
   private touches = new Map<number, TouchLocation>();
   private gestureStart:
     | { distance: number; center: TouchLocation; scale: number; offsetX: number; offsetY: number }
@@ -56,7 +62,9 @@ export class PaperCanvas {
   private offsetY = 0;
   private cssWidth = 1;
   private cssHeight = 1;
+  private basePixelRatio = 1;
   private pixelRatio = 1;
+  private zoomRenderTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(options: PaperCanvasOptions) {
     this.viewport = options.viewport;
@@ -125,6 +133,7 @@ export class PaperCanvas {
   }
 
   destroy(): void {
+    if (this.zoomRenderTimer !== undefined) clearTimeout(this.zoomRenderTimer);
     this.resizeObserver.disconnect();
     this.inkCanvas.removeEventListener("pointerdown", this.handlePointerDown);
     this.inkCanvas.removeEventListener("pointermove", this.handlePointerMove);
@@ -157,7 +166,8 @@ export class PaperCanvas {
 
     this.surface.style.width = `${this.cssWidth}px`;
     this.surface.style.height = `${this.cssHeight}px`;
-    this.pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    this.basePixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    this.pixelRatio = this.pixelRatioForScale(this.scale);
     this.sizeCanvas(this.backgroundCanvas);
     this.sizeCanvas(this.inkCanvas);
     this.drawPaper();
@@ -172,6 +182,32 @@ export class PaperCanvas {
     canvas.height = Math.round(this.cssHeight * this.pixelRatio);
     canvas.style.width = `${this.cssWidth}px`;
     canvas.style.height = `${this.cssHeight}px`;
+  }
+
+  private pixelRatioForScale(scale: number): number {
+    const width = Math.max(this.cssWidth, 1);
+    const height = Math.max(this.cssHeight, 1);
+    const dimensionLimit = Math.min(MAX_CANVAS_DIMENSION / width, MAX_CANVAS_DIMENSION / height);
+    const areaLimit = Math.sqrt(MAX_CANVAS_PIXELS / (width * height));
+    return Math.max(1, Math.min(this.basePixelRatio * scale, dimensionLimit, areaLimit));
+  }
+
+  private rerasterizeForZoom(): void {
+    const nextPixelRatio = this.pixelRatioForScale(this.scale);
+    if (Math.abs(nextPixelRatio - this.pixelRatio) < 0.01) return;
+    this.pixelRatio = nextPixelRatio;
+    this.sizeCanvas(this.backgroundCanvas);
+    this.sizeCanvas(this.inkCanvas);
+    this.drawPaper();
+    this.redrawInk();
+  }
+
+  private scheduleZoomRerasterization(): void {
+    if (this.zoomRenderTimer !== undefined) clearTimeout(this.zoomRenderTimer);
+    this.zoomRenderTimer = setTimeout(() => {
+      this.zoomRenderTimer = undefined;
+      this.rerasterizeForZoom();
+    }, ZOOM_RENDER_DELAY);
   }
 
   private drawPaper(): void {
@@ -334,7 +370,7 @@ export class PaperCanvas {
       context.globalCompositeOperation = "destination-out";
       context.globalAlpha = 1;
       context.strokeStyle = "#000";
-      context.lineWidth = stroke.width * 2.8;
+      context.lineWidth = stroke.width * ERASER_WIDTH_MULTIPLIER;
       this.strokeLine(context, x1, y1, x2, y2);
     } else if (stroke.tool === "pencil") {
       const dx = x2 - x1;
@@ -424,6 +460,11 @@ export class PaperCanvas {
     if (this.gestureStart) return;
     this.activeStrokePointer = event.pointerId;
     this.activeStrokeWasTouch = event.pointerType === "touch";
+    if (this.state.tool === "eraser") {
+      this.strokesBeforeErase = structuredClone(this.state.strokes);
+      this.eraseStrokesBetween(this.pointFromEvent(event), this.pointFromEvent(event));
+      return;
+    }
     this.activeStroke = {
       id: crypto.randomUUID(),
       tool: this.state.tool,
@@ -450,9 +491,24 @@ export class PaperCanvas {
         return;
       }
     }
-    if (event.pointerId !== this.activeStrokePointer || !this.activeStroke) return;
+    if (event.pointerId !== this.activeStrokePointer) return;
 
     const events = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : [event];
+    if (this.state.tool === "eraser") {
+      for (const sample of events.length > 0 ? events : [event]) {
+        const next = this.pointFromEvent(sample);
+        const previous = this.activeStroke?.points.at(-1) ?? next;
+        this.activeStroke = {
+          id: "eraser-preview",
+          tool: "eraser",
+          width: this.state.width,
+          points: [next],
+        };
+        this.eraseStrokesBetween(previous, next);
+      }
+      return;
+    }
+    if (!this.activeStroke) return;
     for (const sample of events.length > 0 ? events : [event]) {
       const next = this.pointFromEvent(sample);
       const previous = this.activeStroke.points.at(-1);
@@ -469,27 +525,110 @@ export class PaperCanvas {
       this.inkCanvas.classList.remove("is-panning");
       return;
     }
+    const wasZoomGesture = this.gestureStart !== undefined;
     if (event.pointerType === "touch") this.touches.delete(event.pointerId);
     if (event.pointerId === this.activeStrokePointer) this.finishStroke();
-    if (this.touches.size < 2) this.gestureStart = undefined;
+    if (this.touches.size < 2) {
+      this.gestureStart = undefined;
+      if (wasZoomGesture) this.rerasterizeForZoom();
+    }
   };
 
   private finishStroke(): void {
-    if (this.activeStroke && this.activeStroke.points.length > 0) {
+    if (this.eraserChanged) {
+      this.onChange(structuredClone(this.state.strokes));
+    } else if (this.activeStroke && this.activeStroke.tool !== "eraser" && this.activeStroke.points.length > 0) {
       this.onChange(structuredClone(this.state.strokes));
     }
     this.activeStroke = undefined;
     this.activeStrokePointer = undefined;
     this.activeStrokeWasTouch = false;
+    this.eraserChanged = false;
+    this.strokesBeforeErase = undefined;
   }
 
   private cancelTouchStroke(): void {
-    if (!this.activeStroke || !this.activeStrokeWasTouch) return;
-    this.state.strokes = this.state.strokes.filter((stroke) => stroke.id !== this.activeStroke?.id);
+    if (!this.activeStrokeWasTouch || this.activeStrokePointer === undefined) return;
+    if (this.strokesBeforeErase) {
+      this.state.strokes = this.strokesBeforeErase;
+    } else if (this.activeStroke) {
+      this.state.strokes = this.state.strokes.filter((stroke) => stroke.id !== this.activeStroke?.id);
+    }
     this.activeStroke = undefined;
     this.activeStrokePointer = undefined;
     this.activeStrokeWasTouch = false;
+    this.eraserChanged = false;
+    this.strokesBeforeErase = undefined;
     this.redrawInk();
+  }
+
+  private eraseStrokesBetween(from: InkPoint, to: InkPoint): void {
+    const eraserRadius = this.state.width * ERASER_WIDTH_MULTIPLIER / 2;
+    const beforeCount = this.state.strokes.length;
+    this.state.strokes = this.state.strokes.filter((stroke) => (
+      stroke.tool === "eraser" || !this.strokeIntersectsEraser(stroke, from, to, eraserRadius)
+    ));
+    if (this.state.strokes.length !== beforeCount) {
+      this.eraserChanged = true;
+      this.redrawInk();
+    }
+  }
+
+  private strokeIntersectsEraser(
+    stroke: InkStroke,
+    eraserFrom: InkPoint,
+    eraserTo: InkPoint,
+    eraserRadius: number,
+  ): boolean {
+    if (stroke.points.length === 0) return false;
+    const from = this.canvasPoint(eraserFrom);
+    const to = this.canvasPoint(eraserTo);
+    const hitDistance = eraserRadius + stroke.width;
+    if (stroke.points.length === 1) {
+      return this.pointToSegmentDistance(this.canvasPoint(stroke.points[0]), from, to) <= hitDistance;
+    }
+    for (let index = 1; index < stroke.points.length; index += 1) {
+      const strokeFrom = this.canvasPoint(stroke.points[index - 1]);
+      const strokeTo = this.canvasPoint(stroke.points[index]);
+      if (this.segmentDistance(from, to, strokeFrom, strokeTo) <= hitDistance) return true;
+    }
+    return false;
+  }
+
+  private canvasPoint(point: InkPoint): TouchLocation {
+    return { x: point.x * this.cssWidth, y: point.y * this.cssHeight };
+  }
+
+  private segmentDistance(a: TouchLocation, b: TouchLocation, c: TouchLocation, d: TouchLocation): number {
+    if (this.segmentsIntersect(a, b, c, d)) return 0;
+    return Math.min(
+      this.pointToSegmentDistance(a, c, d),
+      this.pointToSegmentDistance(b, c, d),
+      this.pointToSegmentDistance(c, a, b),
+      this.pointToSegmentDistance(d, a, b),
+    );
+  }
+
+  private pointToSegmentDistance(point: TouchLocation, from: TouchLocation, to: TouchLocation): number {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    if (dx === 0 && dy === 0) return Math.hypot(point.x - from.x, point.y - from.y);
+    const projection = Math.min(Math.max(
+      ((point.x - from.x) * dx + (point.y - from.y) * dy) / (dx * dx + dy * dy),
+      0,
+    ), 1);
+    return Math.hypot(point.x - (from.x + projection * dx), point.y - (from.y + projection * dy));
+  }
+
+  private segmentsIntersect(a: TouchLocation, b: TouchLocation, c: TouchLocation, d: TouchLocation): boolean {
+    const cross = (p: TouchLocation, q: TouchLocation, r: TouchLocation) =>
+      (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+    const abC = cross(a, b, c);
+    const abD = cross(a, b, d);
+    const cdA = cross(c, d, a);
+    const cdB = cross(c, d, b);
+    return ((abC <= 0 && abD >= 0) || (abC >= 0 && abD <= 0)) &&
+      ((cdA <= 0 && cdB >= 0) || (cdA >= 0 && cdB <= 0));
   }
 
   private pointFromEvent(event: PointerEvent): InkPoint {
@@ -537,6 +676,7 @@ export class PaperCanvas {
       this.scale = Math.min(Math.max(this.scale * Math.exp(-event.deltaY * 0.004), 1), 3);
       this.clampOffset();
       this.applyTransform();
+      this.scheduleZoomRerasterization();
       return;
     }
     if (this.scale <= 1) return;
