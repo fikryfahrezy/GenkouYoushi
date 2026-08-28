@@ -1,10 +1,10 @@
 {
-  "id": "/",
+  "id": "/app/",
   "name": "Genkou Youshi",
   "short_name": "Genkou",
   "description": "Japanese manuscript paper and kanji writing practice.",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "/app/",
+  "scope": "/app/",
   "display": "standalone",
   "background_color": "#e3ded0",
   "theme_color": "#e3ded0",

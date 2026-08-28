@@ -65,9 +65,9 @@ Build the static site with:
 bun run build
 ```
 
-Deploy the generated `web/dist` directory to any HTTPS static host. Set `VITE_API_BASE_URL` to a compatible service before building.
+Deploy the generated `web/dist` directory to any HTTPS static host. Set `VITE_API_BASE_URL` to a compatible service before building. The marketing landing page is served at `/`, while the installable application lives at `/app/`.
 
-To install the PWA, open the site's browser menu or Share sheet and choose **Install app** or **Add to Home Screen**. The exact wording depends on the browser and device.
+To install the PWA, first open `/app/`, then use the browser menu or Share sheet and choose **Install app** or **Add to Home Screen**. The installed PWA always launches at `/app/`; the landing page is outside its manifest and service-worker scope.
 
 ## Storage and export
 

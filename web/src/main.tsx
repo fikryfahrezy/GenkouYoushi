@@ -467,9 +467,9 @@ if (!root) throw new Error("App root is missing.");
 render(() => <App />, root);
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
-  const serviceWorkerUrl = new URL(`sw.js?v=${__BUILD_ID__}`, window.location.href);
+  const serviceWorkerUrl = `/app/sw.js?v=${__BUILD_ID__}`;
   window.addEventListener("load", () => void navigator.serviceWorker.register(
     serviceWorkerUrl,
-    { updateViaCache: "none" },
+    { scope: "/app/", updateViaCache: "none" },
   ));
 }

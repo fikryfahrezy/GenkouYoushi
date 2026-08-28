@@ -1,8 +1,8 @@
 const CACHE = "genkou-youshi-__BUILD_ID__";
 const SHELL = [
-  "/",
-  "/index.html",
-  "/manifest.webmanifest",
+  "/app/",
+  "/app/index.html",
+  "/app/manifest.webmanifest",
   "/icon.svg",
   "/models/dakanji/char_classifier.onnx",
   "/models/dakanji/char_classifier_labels.txt",
@@ -38,6 +38,6 @@ self.addEventListener("fetch", (event) => {
         }
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached ?? caches.match("/index.html"))),
+      .catch(() => caches.match(event.request).then((cached) => cached ?? caches.match("/app/index.html"))),
   );
 });

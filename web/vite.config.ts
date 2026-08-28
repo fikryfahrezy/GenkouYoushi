@@ -55,12 +55,20 @@ export default defineConfig({
           .replace("__BUILD_ID__", BUILD_ID);
         this.emitFile({
           type: "asset",
-          fileName: "sw.js",
+          fileName: "app/sw.js",
           source: serviceWorker,
         });
       },
     },
   ],
+  build: {
+    rollupOptions: {
+      input: {
+        landing: resolve("index.html"),
+        app: resolve("app/index.html"),
+      },
+    },
+  },
   server: {
     port: 5173,
   },
