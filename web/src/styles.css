@@ -322,6 +322,15 @@ button:disabled {
   overflow: hidden;
 }
 
+.paper-viewport,
+.paper-surface,
+.paper-surface * {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .paper-surface {
   position: absolute;
   flex: none;

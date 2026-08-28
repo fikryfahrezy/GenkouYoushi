@@ -96,6 +96,8 @@ export class PaperCanvas {
     this.inkCanvas.addEventListener("pointerenter", this.handlePointerEnter);
     this.inkCanvas.addEventListener("pointerleave", this.handlePointerLeave);
     this.inkCanvas.addEventListener("contextmenu", (event) => event.preventDefault());
+    this.surface.addEventListener("selectstart", this.preventBrowserSelection);
+    this.surface.addEventListener("dragstart", this.preventBrowserSelection);
     this.viewport.addEventListener("wheel", this.handleWheel, { passive: false });
     window.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("keyup", this.handleKeyUp);
@@ -150,6 +152,8 @@ export class PaperCanvas {
     this.inkCanvas.removeEventListener("pointercancel", this.handlePointerUp);
     this.inkCanvas.removeEventListener("pointerenter", this.handlePointerEnter);
     this.inkCanvas.removeEventListener("pointerleave", this.handlePointerLeave);
+    this.surface.removeEventListener("selectstart", this.preventBrowserSelection);
+    this.surface.removeEventListener("dragstart", this.preventBrowserSelection);
     this.viewport.removeEventListener("wheel", this.handleWheel);
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("keyup", this.handleKeyUp);
@@ -730,6 +734,10 @@ export class PaperCanvas {
 
   private handlePointerEnter = (): void => {
     this.pointerInside = true;
+  };
+
+  private preventBrowserSelection = (event: Event): void => {
+    event.preventDefault();
   };
 
   private handlePointerLeave = (): void => {
