@@ -454,8 +454,8 @@ function App() {
       <dialog ref={installDialog} class="install-dialog">
         <button class="dialog-close" onClick={() => installDialog.close()} type="button" aria-label="Close"><X aria-hidden="true" /></button>
         <div class="seal dialog-seal">原</div>
-        <h2>Install on your iPad</h2>
-        <p>Open this site in Safari, tap the Share button, then choose <strong>Add to Home Screen</strong>.</p>
+        <h2>Install on your device</h2>
+        <p>Open your browser menu or Share sheet, then choose <strong>Install app</strong> or <strong>Add to Home Screen</strong>.</p>
         <p class="dialog-note">Your sheets stay in this browser. Export important work as a backup.</p>
       </dialog>
     </main>
@@ -467,8 +467,9 @@ if (!root) throw new Error("App root is missing.");
 render(() => <App />, root);
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  const serviceWorkerUrl = new URL(`sw.js?v=${__BUILD_ID__}`, window.location.href);
   window.addEventListener("load", () => void navigator.serviceWorker.register(
-    `/sw.js?v=${__BUILD_ID__}`,
+    serviceWorkerUrl,
     { updateViaCache: "none" },
   ));
 }

@@ -67,8 +67,8 @@ npm run build
 
 Deploy the generated `web/dist` directory to any HTTPS static host. Set `VITE_API_BASE_URL` to a compatible service before building.
 
-On iPad, open the site in Safari and use **Share → Add to Home Screen**.
+To install the PWA, open the site's browser menu or Share sheet and choose **Install app** or **Add to Home Screen**. The exact wording depends on the browser and device.
 
 ## Storage and export
 
-Practice sheets are saved to IndexedDB on the current browser profile. Export uses the system print sheet; choose PDF/Save to Files on iPadOS. Clearing Safari website data will also remove local sheets.
+Practice sheets are saved to IndexedDB in the current browser profile. Export uses the system print dialog; choose **Save as PDF** or the equivalent option on your device. Clearing the site's browser data will also remove local sheets.
