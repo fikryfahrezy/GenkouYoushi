@@ -245,6 +245,10 @@ button:disabled {
   height: 17px;
 }
 
+.reference-toggle {
+  display: none;
+}
+
 .export-button {
   display: flex;
   align-items: center;
@@ -897,6 +901,10 @@ button:disabled {
 }
 
 @media (max-width: 1180px) {
+  .reference-toggle {
+    display: grid;
+  }
+
   .practice-content {
     grid-template-columns: minmax(0, 1fr);
   }
