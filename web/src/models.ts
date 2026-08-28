@@ -1,3 +1,5 @@
+import { createID } from "./id";
+
 export type WritingTool = "brush" | "pencil" | "eraser";
 
 export interface InkPoint {
@@ -48,7 +50,7 @@ export const COMPACT_GRID: ManuscriptGrid = { columns: 10, rows: 20 };
 export function createPracticeDocument(grid: ManuscriptGrid = STANDARD_GRID): PracticeDocument {
   const now = new Date().toISOString();
   return {
-    id: crypto.randomUUID(),
+    id: createID(),
     title: "永 practice",
     prompt: { character: "永", strokeOrderSvgs: [] },
     grid: { ...grid },
