@@ -18,7 +18,7 @@ function loadSession(): Promise<ort.InferenceSession> {
     // A single WASM thread works on iOS/Safari without cross-origin isolation.
     ort.env.wasm.numThreads = 1;
     ort.env.wasm.wasmPaths = {
-      mjs: new URL(assetUrl("ort/ort-wasm-simd-threaded.mjs"), window.location.href).href,
+      mjs: new URL(assetUrl("ort/ort-wasm-simd-threaded.js"), window.location.href).href,
       wasm: new URL(assetUrl("ort/ort-wasm-simd-threaded.wasm"), window.location.href).href,
     };
     sessionPromise = ort.InferenceSession.create(assetUrl(MODEL_PATH), {

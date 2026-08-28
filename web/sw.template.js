@@ -1,4 +1,4 @@
-const CACHE = "genkou-youshi-v2";
+const CACHE = "genkou-youshi-__BUILD_ID__";
 const SHELL = [
   "/",
   "/index.html",
@@ -6,7 +6,7 @@ const SHELL = [
   "/icon.svg",
   "/models/dakanji/char_classifier.onnx",
   "/models/dakanji/char_classifier_labels.txt",
-  "/ort/ort-wasm-simd-threaded.mjs",
+  "/ort/ort-wasm-simd-threaded.js",
   "/ort/ort-wasm-simd-threaded.wasm",
 ];
 
