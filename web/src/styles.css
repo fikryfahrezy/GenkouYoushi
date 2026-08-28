@@ -330,6 +330,9 @@ button:disabled {
   border-radius: 2px;
   box-shadow: 0 12px 30px rgba(64, 56, 41, 0.16);
   transform-origin: center;
+}
+
+.paper-surface.is-zooming {
   will-change: transform;
 }
 

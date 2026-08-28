@@ -1,3 +1,4 @@
+import { createID } from "./id";
 import type { InkPoint, InkStroke, ManuscriptGrid, PracticePrompt, WritingTool } from "./models";
 import { svgDataUrl } from "./svg";
 
@@ -59,6 +60,7 @@ export class PaperCanvas {
   private pointerInside = false;
   private spacePressed = false;
   private scale = 1;
+  private renderedScale = 1;
   private offsetX = 0;
   private offsetY = 0;
   private cssWidth = 1;
@@ -66,6 +68,7 @@ export class PaperCanvas {
   private basePixelRatio = 1;
   private pixelRatio = 1;
   private zoomRenderTimer: ReturnType<typeof setTimeout> | undefined;
+  private pendingTouchZoomCommit = false;
 
   constructor(options: PaperCanvasOptions) {
     this.viewport = options.viewport;
@@ -127,14 +130,19 @@ export class PaperCanvas {
   }
 
   resetViewport(): void {
+    this.touches.clear();
+    this.gestureStart = undefined;
+    this.pendingTouchZoomCommit = false;
+    this.surface.classList.remove("is-zooming");
     this.scale = 1;
     this.offsetX = 0;
     this.offsetY = 0;
-    this.applyTransform();
+    this.commitZoom();
   }
 
   destroy(): void {
     if (this.zoomRenderTimer !== undefined) clearTimeout(this.zoomRenderTimer);
+    this.surface.classList.remove("is-zooming");
     this.resizeObserver.disconnect();
     this.inkCanvas.removeEventListener("pointerdown", this.handlePointerDown);
     this.inkCanvas.removeEventListener("pointermove", this.handlePointerMove);
@@ -165,10 +173,10 @@ export class PaperCanvas {
       this.cssHeight = availableHeight;
     }
 
-    this.surface.style.width = `${this.cssWidth}px`;
-    this.surface.style.height = `${this.cssHeight}px`;
     this.basePixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    this.renderedScale = this.scale;
     this.pixelRatio = this.pixelRatioForScale(this.scale);
+    this.sizeSurface();
     this.sizeCanvas(this.backgroundCanvas);
     this.sizeCanvas(this.inkCanvas);
     this.drawPaper();
@@ -178,11 +186,16 @@ export class PaperCanvas {
     this.applyTransform();
   }
 
+  private sizeSurface(): void {
+    this.surface.style.width = `${this.cssWidth * this.renderedScale}px`;
+    this.surface.style.height = `${this.cssHeight * this.renderedScale}px`;
+  }
+
   private sizeCanvas(canvas: HTMLCanvasElement): void {
     canvas.width = Math.round(this.cssWidth * this.pixelRatio);
     canvas.height = Math.round(this.cssHeight * this.pixelRatio);
-    canvas.style.width = `${this.cssWidth}px`;
-    canvas.style.height = `${this.cssHeight}px`;
+    canvas.style.width = `${this.cssWidth * this.renderedScale}px`;
+    canvas.style.height = `${this.cssHeight * this.renderedScale}px`;
   }
 
   private pixelRatioForScale(scale: number): number {
@@ -193,21 +206,31 @@ export class PaperCanvas {
     return Math.max(1, Math.min(this.basePixelRatio * scale, dimensionLimit, areaLimit));
   }
 
-  private rerasterizeForZoom(): void {
+  private commitZoom(): void {
     const nextPixelRatio = this.pixelRatioForScale(this.scale);
-    if (Math.abs(nextPixelRatio - this.pixelRatio) < 0.01) return;
+    const scaleChanged = Math.abs(this.scale - this.renderedScale) >= 0.001;
+    const pixelRatioChanged = Math.abs(nextPixelRatio - this.pixelRatio) >= 0.01;
+    if (!scaleChanged && !pixelRatioChanged) {
+      this.applyTransform();
+      return;
+    }
+
+    this.renderedScale = this.scale;
     this.pixelRatio = nextPixelRatio;
+    this.sizeSurface();
     this.sizeCanvas(this.backgroundCanvas);
     this.sizeCanvas(this.inkCanvas);
     this.drawPaper();
+    this.renderGuides();
     this.redrawInk();
+    this.applyTransform();
   }
 
   private scheduleZoomRerasterization(): void {
     if (this.zoomRenderTimer !== undefined) clearTimeout(this.zoomRenderTimer);
     this.zoomRenderTimer = setTimeout(() => {
       this.zoomRenderTimer = undefined;
-      this.rerasterizeForZoom();
+      this.commitZoom();
     }, ZOOM_RENDER_DELAY);
   }
 
@@ -282,6 +305,7 @@ export class PaperCanvas {
     this.guideLayer.replaceChildren();
     if (!this.state.showsGuides) return;
     const layout = this.cellLayout();
+    const scale = this.renderedScale;
 
     if (this.state.prompt.strokeOrderSvgs.length === 0) {
       const opacities = [0.3, 0.21, 0.13];
@@ -289,11 +313,11 @@ export class PaperCanvas {
         const guide = document.createElement("span");
         guide.className = "text-guide";
         guide.textContent = this.state.prompt.character;
-        guide.style.left = `${layout.x + (this.state.grid.columns - 1) * (layout.cell + layout.gap)}px`;
-        guide.style.top = `${layout.y + row * layout.cell}px`;
-        guide.style.width = `${layout.cell}px`;
-        guide.style.height = `${layout.cell}px`;
-        guide.style.fontSize = `${layout.cell * 0.68}px`;
+        guide.style.left = `${(layout.x + (this.state.grid.columns - 1) * (layout.cell + layout.gap)) * scale}px`;
+        guide.style.top = `${(layout.y + row * layout.cell) * scale}px`;
+        guide.style.width = `${layout.cell * scale}px`;
+        guide.style.height = `${layout.cell * scale}px`;
+        guide.style.fontSize = `${layout.cell * 0.68 * scale}px`;
         guide.style.opacity = String(opacities[row]);
         this.guideLayer.append(guide);
       }
@@ -313,10 +337,10 @@ export class PaperCanvas {
       image.className = "stroke-guide";
       image.alt = "";
       image.draggable = false;
-      image.style.left = `${layout.x + column * (layout.cell + layout.gap) + inset}px`;
-      image.style.top = `${layout.y + row * layout.cell + inset}px`;
-      image.style.width = `${layout.cell - inset * 2}px`;
-      image.style.height = `${layout.cell - inset * 2}px`;
+      image.style.left = `${(layout.x + column * (layout.cell + layout.gap) + inset) * scale}px`;
+      image.style.top = `${(layout.y + row * layout.cell + inset) * scale}px`;
+      image.style.width = `${(layout.cell - inset * 2) * scale}px`;
+      image.style.height = `${(layout.cell - inset * 2) * scale}px`;
       image.addEventListener("error", () => {
         const fallback = document.createElement("span");
         fallback.className = "text-guide";
@@ -325,7 +349,7 @@ export class PaperCanvas {
         fallback.style.top = image.style.top;
         fallback.style.width = image.style.width;
         fallback.style.height = image.style.height;
-        fallback.style.fontSize = `${layout.cell * 0.58}px`;
+        fallback.style.fontSize = `${layout.cell * 0.58 * scale}px`;
         fallback.style.opacity = "0.2";
         image.replaceWith(fallback);
       }, { once: true });
@@ -453,6 +477,8 @@ export class PaperCanvas {
       this.touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (this.touches.size >= 2) {
         this.cancelTouchStroke();
+        this.pendingTouchZoomCommit = false;
+        this.surface.classList.add("is-zooming");
         this.beginGesture();
         return;
       }
@@ -468,7 +494,7 @@ export class PaperCanvas {
       return;
     }
     this.activeStroke = {
-      id: crypto.randomUUID(),
+      id: createID(),
       tool: this.state.tool,
       width: this.state.width,
       points: [this.pointFromEvent(event)],
@@ -526,7 +552,12 @@ export class PaperCanvas {
     if (event.pointerId === this.activeStrokePointer) this.finishStroke();
     if (this.touches.size < 2) {
       this.gestureStart = undefined;
-      if (wasZoomGesture) this.rerasterizeForZoom();
+      if (wasZoomGesture) this.pendingTouchZoomCommit = true;
+    }
+    if (this.touches.size === 0 && this.pendingTouchZoomCommit) {
+      this.pendingTouchZoomCommit = false;
+      this.surface.classList.remove("is-zooming");
+      this.commitZoom();
     }
   };
 
@@ -718,6 +749,10 @@ export class PaperCanvas {
 
   private handleWindowBlur = (): void => {
     this.panStart = undefined;
+    this.touches.clear();
+    this.gestureStart = undefined;
+    this.pendingTouchZoomCommit = false;
+    this.surface.classList.remove("is-zooming");
     this.setSpacePressed(false);
     this.inkCanvas.classList.remove("is-panning");
   };
@@ -734,7 +769,8 @@ export class PaperCanvas {
   }
 
   private applyTransform(): void {
-    this.surface.style.transform = `translate3d(${this.offsetX}px, ${this.offsetY}px, 0) scale(${this.scale})`;
+    const previewScale = this.scale / this.renderedScale;
+    this.surface.style.transform = `translate3d(${this.offsetX}px, ${this.offsetY}px, 0) scale(${previewScale})`;
   }
 
   private clampOffset(): void {
