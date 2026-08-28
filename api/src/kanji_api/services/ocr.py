@@ -188,9 +188,13 @@ def candidates_from_google_response(response: dict[str, Any]) -> list[OCRCandida
 def _add_candidates(
     candidates: dict[str, float], value: str, confidence: float
 ) -> None:
-    for character in value:
-        if is_kanji(character):
-            candidates[character] = max(candidates.get(character, 0), confidence)
+    # OCR providers return transcriptions, not alternative predictions. Only a
+    # one-character token can be represented honestly as a candidate here.
+    characters = [character for character in value.strip() if is_kanji(character)]
+    if len(characters) != 1 or len(value.strip()) != 1:
+        return
+    character = characters[0]
+    candidates[character] = max(candidates.get(character, 0), confidence)
 
 
 def _sorted_candidates(candidates: dict[str, float]) -> list[OCRCandidate]:

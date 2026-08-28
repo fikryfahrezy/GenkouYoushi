@@ -21,6 +21,7 @@ import "./styles.css";
 import { lookupKanji, prepareImageForOcr, recognizeKanji } from "./api";
 import { deleteDocument, loadDocuments, saveDocument } from "./db";
 import { PaperCanvas } from "./ink-canvas";
+import { recognizeKanjiLocally } from "./kanji-recognizer";
 import { svgDataUrl } from "./svg";
 import {
   createPracticeDocument,
@@ -34,6 +35,7 @@ import {
 type Section = "practice" | "library";
 
 function App() {
+  const [loading, setLoading] = createSignal(true);
   const [documents, setDocuments] = createSignal<PracticeDocument[]>([]);
   const [activeDocumentId, setActiveDocumentId] = createSignal("");
   const [section, setSection] = createSignal<Section>("practice");
@@ -179,8 +181,19 @@ function App() {
     setOcrCandidates([]);
     try {
       const image = await prepareImageForOcr(file);
-      const candidates = await recognizeKanji(image);
-      if (candidates.length === 0) throw new Error("No kanji was found. Try a tighter, clearer photo.");
+      let candidates: KanjiCandidate[];
+      let localFailure: unknown;
+      try {
+        candidates = await recognizeKanjiLocally(image);
+      } catch (localCause) {
+        localFailure = localCause;
+        console.warn("Local handwriting recognition failed; using printed-text OCR.", localCause);
+        candidates = await recognizeKanji(image, "tesseract");
+      }
+      if (candidates.length === 0) {
+        if (localFailure instanceof Error) throw localFailure;
+        throw new Error("No kanji was found. Try a tighter, clearer photo.");
+      }
       setOcrCandidates(candidates);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Photo recognition failed.");
@@ -274,6 +287,8 @@ function App() {
         if (stored[0].prompt.strokeOrderSvgs.length === 0) void performLookup(false);
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "Could not load the local library.");
+      } finally {
+        setLoading(false);
       }
     })();
   });
@@ -306,7 +321,15 @@ function App() {
   });
 
   return (
-    <main class="app-shell">
+    <main class="app-shell" aria-busy={loading()}>
+      <Show when={loading()}>
+        <div class="startup-loading" role="status" aria-live="polite">
+          <div class="startup-mark" aria-hidden="true">原</div>
+          <span class="startup-spinner" aria-hidden="true" />
+          <p>Opening your practice sheets…</p>
+        </div>
+      </Show>
+
       <nav class="navigation-rail" aria-label="Main navigation">
         <div class="seal" aria-label="Genkou Youshi">原</div>
         <button classList={{ "nav-button": true, "is-selected": section() === "practice" }} onClick={() => showSection("practice")} type="button">

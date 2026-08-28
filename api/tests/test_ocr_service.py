@@ -52,7 +52,7 @@ class OCRServiceTests(unittest.TestCase):
         with self.assertRaises(ImageTooLargeError):
             self.service.recognize(b64encode(b"too large").decode(), "image/jpeg")
 
-    def test_parses_and_sorts_tesseract_candidates(self) -> None:
+    def test_does_not_turn_transcribed_text_into_fake_candidates(self) -> None:
         tsv = (
             "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
             "5\t1\t1\t1\t1\t1\t0\t0\t10\t10\t72\t文字\n"
@@ -61,7 +61,7 @@ class OCRServiceTests(unittest.TestCase):
 
         result = candidates_from_tesseract_tsv(tsv)
 
-        self.assertEqual([candidate.character for candidate in result], ["永", "文", "字"])
+        self.assertEqual([candidate.character for candidate in result], ["永"])
         self.assertEqual(result[0].confidence, 0.95)
 
 

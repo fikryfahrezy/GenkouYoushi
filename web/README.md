@@ -53,7 +53,9 @@ The `provider` property is optional. OCR returns ranked candidates:
 }
 ```
 
-Photo recognition is optional from the PWA's perspective. A failure is shown to the user without disabling drawing, local storage, lookup, or export.
+Photo recognition runs locally in the browser first with the DaKanji single-character ONNX model. Images remain on the device when local recognition succeeds and the returned choices are genuine top-k model probabilities. If the browser cannot initialize the local WASM runtime, the PWA uses the API's Tesseract provider as a final printed-text fallback. Google Vision remains supported by the API but is not called by the PWA.
+
+The model and label map in `public/models/dakanji` come from the official [DaKanji Single Kanji Recognition v2.0 release](https://github.com/dariyooo/DaKanji-Single-Kanji-Recognition/releases/tag/v2.0) and are distributed under its MIT license. Character recognition is powered by machine learning from Dariyooo (DaAppLab).
 
 ## Production
 
