@@ -6,9 +6,9 @@ A SolidJS and TypeScript PWA port of the iPad app. Solid owns the reactive UI wh
 
 ```sh
 cd web
-npm install
+bun install
 cp .env.example .env.local
-npm run dev
+bun run dev
 ```
 
 Set the external service URL in `.env.local`:
@@ -62,7 +62,7 @@ The model and label map in `public/models/dakanji` come from the official [DaKan
 Build the static site with:
 
 ```sh
-npm run build
+bun run build
 ```
 
 Deploy the generated `web/dist` directory to any HTTPS static host. Set `VITE_API_BASE_URL` to a compatible service before building.
