@@ -1,79 +1,84 @@
 <svg width="888" height="888" viewBox="0 0 888 888" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="888" height="888" rx="225" fill="#BA3325"/>
 <g clip-path="url(#clip0_38_132)">
-<rect width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="111" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="222" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="333" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="444" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="555" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="666" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="777" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect y="111" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="111" y="111" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="222" y="111" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="333" y="111" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="444" y="111" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="555" y="111" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="666" y="111" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="777" y="111" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect y="222" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="111" y="222" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="222" y="222" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="333" y="222" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="444" y="222" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="555" y="222" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="666" y="222" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="777" y="222" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect y="333" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="111" y="333" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="222" y="333" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="333" y="333" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="444" y="333" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="555" y="333" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="666" y="333" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="777" y="333" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect y="444" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="111" y="444" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="222" y="444" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="333" y="444" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="444" y="444" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="555" y="444" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="666" y="444" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="777" y="444" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect y="555" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="111" y="555" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="222" y="555" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="333" y="555" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="444" y="555" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="555" y="555" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="666" y="555" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="777" y="555" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect y="666" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="111" y="666" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="222" y="666" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="333" y="666" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="444" y="666" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="555" y="666" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="666" y="666" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="777" y="666" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect y="777" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="111" y="777" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="222" y="777" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="333" y="777" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="444" y="777" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="555" y="777" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="666" y="777" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-<rect x="777" y="777" width="111" height="111" stroke="#628B71" stroke-width="2"/>
-</g>
+<rect width="888" height="888" rx="225" fill="#B93327"/>
 <g clip-path="url(#clip1_38_132)">
-<path d="M515.168 478.232V550.424C515.168 573.464 515.168 589.848 516.192 625.176C515.68 644.632 511.584 653.336 499.808 661.528C488.544 669.208 459.872 677.4 444.512 677.4C440.416 677.4 438.88 675.864 438.368 670.744C437.344 662.04 435.296 655.896 431.2 650.264C425.568 642.072 419.424 638.488 403.04 632.856C400.992 632.344 393.312 630.296 381.024 626.712C376.416 625.688 371.808 624.152 367.2 622.616L367.712 616.472C397.92 618.52 408.672 619.032 451.68 620.056C452.192 620.056 453.216 620.056 453.728 620.056C459.36 620.056 460.896 618.008 460.896 611.864V478.232H404.576V486.936C404.064 492.056 403.04 494.616 400.48 496.152C396.384 498.712 383.072 500.248 367.2 500.248C352.864 500.248 349.792 498.2 349.792 488.984C351.328 447.512 351.84 401.944 351.84 359.96C351.84 331.8 351.328 314.904 349.792 290.84C375.904 302.616 383.584 306.2 408.672 320.024H439.392C446.048 293.912 448.608 280.088 452.192 254.488H310.88C310.368 393.24 307.296 443.928 298.08 495.128C288.864 547.864 271.968 592.408 247.392 629.784C236.128 646.68 227.424 657.432 208.992 677.912L204.384 674.328C223.84 633.88 233.568 600.088 241.76 546.328C249.952 493.08 253.536 432.152 253.536 347.672C253.536 277.016 252.512 241.688 249.952 210.968C281.184 224.28 290.912 228.376 321.632 243.736H582.24C598.624 225.816 603.744 220.696 619.616 203.8C645.728 221.72 653.408 227.352 678.496 246.808C680.544 248.856 681.568 250.392 681.568 251.416C681.568 253.464 679.52 254.488 675.936 254.488H523.36C499.808 283.16 489.056 294.424 460.384 320.024H563.808C577.12 306.712 581.216 302.616 594.016 290.328C613.472 302.616 619.104 306.712 637.024 320.024C641.632 323.608 643.68 326.168 643.68 328.216C643.68 332.824 640.096 335.896 624.736 343.064C624.736 357.912 624.736 358.936 624.736 373.272C624.736 381.464 625.248 411.672 626.272 484.376C626.272 490.008 624.736 492.568 622.176 494.616C617.568 497.688 604.768 499.224 586.848 499.224C573.536 499.224 570.464 497.688 569.952 489.496V478.232H515.168ZM404.576 390.68H569.952V330.776H404.576V390.68ZM569.952 401.432H404.576V467.48H569.952V401.432ZM273.504 661.016L270.432 656.408C301.664 622.104 318.56 599.576 337.504 566.296C350.304 543.768 355.936 530.968 362.592 513.048C376.928 517.144 387.68 520.728 394.848 522.776C423.52 530.968 434.272 535.576 434.272 540.696C434.272 546.328 427.616 548.888 409.696 549.4C373.344 598.04 336.992 627.224 273.504 661.016ZM542.304 523.288L545.888 518.68C600.672 543.256 611.424 548.888 634.464 564.76C655.456 579.096 663.136 590.36 663.136 607.256C663.136 628.76 647.264 650.776 631.392 650.776C622.176 650.776 619.104 647.192 608.864 621.592C593.504 585.24 574.56 557.592 542.304 523.288Z" fill="#FAF6E8"/>
+<rect width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="111" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="222" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="333" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="444" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="555" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="666" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="777" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect y="111" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="111" y="111" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="222" y="111" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="333" y="111" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="444" y="111" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="555" y="111" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="666" y="111" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="777" y="111" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect y="222" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="111" y="222" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="222" y="222" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="333" y="222" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="444" y="222" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="555" y="222" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="666" y="222" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="777" y="222" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect y="333" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="111" y="333" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="222" y="333" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="333" y="333" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="444" y="333" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="555" y="333" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="666" y="333" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="777" y="333" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect y="444" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="111" y="444" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="222" y="444" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="333" y="444" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="444" y="444" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="555" y="444" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="666" y="444" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="777" y="444" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect y="555" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="111" y="555" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="222" y="555" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="333" y="555" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="444" y="555" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="555" y="555" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="666" y="555" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="777" y="555" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect y="666" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="111" y="666" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="222" y="666" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="333" y="666" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="444" y="666" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="555" y="666" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="666" y="666" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="777" y="666" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect y="777" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="111" y="777" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="222" y="777" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="333" y="777" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="444" y="777" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="555" y="777" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="666" y="777" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+<rect x="777" y="777" width="111" height="111" stroke="#6B876E" stroke-width="2"/>
+</g>
+<g clip-path="url(#clip2_38_132)">
+<path d="M515.168 478.232V550.424C515.168 573.464 515.168 589.848 516.192 625.176C515.68 644.632 511.584 653.336 499.808 661.528C488.544 669.208 459.872 677.4 444.512 677.4C440.416 677.4 438.88 675.864 438.368 670.744C437.344 662.04 435.296 655.896 431.2 650.264C425.568 642.072 419.424 638.488 403.04 632.856C400.992 632.344 393.312 630.296 381.024 626.712C376.416 625.688 371.808 624.152 367.2 622.616L367.712 616.472C397.92 618.52 408.672 619.032 451.68 620.056C452.192 620.056 453.216 620.056 453.728 620.056C459.36 620.056 460.896 618.008 460.896 611.864V478.232H404.576V486.936C404.064 492.056 403.04 494.616 400.48 496.152C396.384 498.712 383.072 500.248 367.2 500.248C352.864 500.248 349.792 498.2 349.792 488.984C351.328 447.512 351.84 401.944 351.84 359.96C351.84 331.8 351.328 314.904 349.792 290.84C375.904 302.616 383.584 306.2 408.672 320.024H439.392C446.048 293.912 448.608 280.088 452.192 254.488H310.88C310.368 393.24 307.296 443.928 298.08 495.128C288.864 547.864 271.968 592.408 247.392 629.784C236.128 646.68 227.424 657.432 208.992 677.912L204.384 674.328C223.84 633.88 233.568 600.088 241.76 546.328C249.952 493.08 253.536 432.152 253.536 347.672C253.536 277.016 252.512 241.688 249.952 210.968C281.184 224.28 290.912 228.376 321.632 243.736H582.24C598.624 225.816 603.744 220.696 619.616 203.8C645.728 221.72 653.408 227.352 678.496 246.808C680.544 248.856 681.568 250.392 681.568 251.416C681.568 253.464 679.52 254.488 675.936 254.488H523.36C499.808 283.16 489.056 294.424 460.384 320.024H563.808C577.12 306.712 581.216 302.616 594.016 290.328C613.472 302.616 619.104 306.712 637.024 320.024C641.632 323.608 643.68 326.168 643.68 328.216C643.68 332.824 640.096 335.896 624.736 343.064C624.736 357.912 624.736 358.936 624.736 373.272C624.736 381.464 625.248 411.672 626.272 484.376C626.272 490.008 624.736 492.568 622.176 494.616C617.568 497.688 604.768 499.224 586.848 499.224C573.536 499.224 570.464 497.688 569.952 489.496V478.232H515.168ZM404.576 390.68H569.952V330.776H404.576V390.68ZM569.952 401.432H404.576V467.48H569.952V401.432ZM273.504 661.016L270.432 656.408C301.664 622.104 318.56 599.576 337.504 566.296C350.304 543.768 355.936 530.968 362.592 513.048C376.928 517.144 387.68 520.728 394.848 522.776C423.52 530.968 434.272 535.576 434.272 540.696C434.272 546.328 427.616 548.888 409.696 549.4C373.344 598.04 336.992 627.224 273.504 661.016ZM542.304 523.288L545.888 518.68C600.672 543.256 611.424 548.888 634.464 564.76C655.456 579.096 663.136 590.36 663.136 607.256C663.136 628.76 647.264 650.776 631.392 650.776C622.176 650.776 619.104 647.192 608.864 621.592C593.504 585.24 574.56 557.592 542.304 523.288Z" fill="#FBF7E8"/>
+</g>
 </g>
 <defs>
 <clipPath id="clip0_38_132">
-<rect width="888" height="888" fill="white"/>
+<rect width="888" height="888" rx="225" fill="white"/>
 </clipPath>
 <clipPath id="clip1_38_132">
+<rect width="888" height="888" fill="white"/>
+</clipPath>
+<clipPath id="clip2_38_132">
 <rect width="888" height="888" fill="white"/>
 </clipPath>
 </defs>
