@@ -19,6 +19,7 @@ import {
   Pencil,
   Plus,
   Redo2,
+  ScanLine,
   Search,
   Sheet,
   Trash2,
@@ -54,7 +55,10 @@ function App() {
   const [status, setStatus] = createSignal("Ready");
   const [saving, setSaving] = createSignal(false);
   const [error, setError] = createSignal("");
+  const [ocrError, setOcrError] = createSignal("");
   const [ocrCandidates, setOcrCandidates] = createSignal<KanjiCandidate[]>([]);
+  const [photoFile, setPhotoFile] = createSignal<File>();
+  const [photoPreview, setPhotoPreview] = createSignal("");
   const [referenceOpen, setReferenceOpen] = createSignal(false);
   const [newSheetPickerOpen, setNewSheetPickerOpen] = createSignal(false);
   const [lookingUp, setLookingUp] = createSignal(false);
@@ -68,8 +72,11 @@ function App() {
   let guideLayer!: HTMLDivElement;
   let kanjiInput!: HTMLInputElement;
   let photoInput!: HTMLInputElement;
+  let replacementPhotoInput!: HTMLInputElement;
+  let photoDialog!: HTMLDialogElement;
   let installDialog!: HTMLDialogElement;
   let saveTimer: number | undefined;
+  let photoPreviewObjectUrl = "";
 
   const active = createMemo(() =>
     documents().find((document) => document.id === activeDocumentId()),
@@ -191,19 +198,26 @@ function App() {
     markEdited("Cleared", { strokes: [] });
   }
 
-  async function performLookup(focusCanvas: boolean): Promise<void> {
+  async function performLookup(
+    focusCanvas: boolean,
+    errorTarget: "reference" | "photo" = "reference",
+  ): Promise<boolean> {
+    const updateError = errorTarget === "photo" ? setOcrError : setError;
     setLookingUp(true);
-    setError("");
+    updateError("");
     try {
       const prompt = await lookupKanji(kanjiInput.value);
       markEdited("Reference updated", {
         prompt,
         title: `${prompt.character} practice`,
       });
-      setOcrCandidates([]);
       if (focusCanvas) inkCanvas.focus();
+      return true;
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Kanji lookup failed.");
+      updateError(
+        cause instanceof Error ? cause.message : "Kanji lookup failed.",
+      );
+      return false;
     } finally {
       setLookingUp(false);
     }
@@ -211,7 +225,7 @@ function App() {
 
   async function performOcr(file: File): Promise<void> {
     setRecognizing(true);
-    setError("");
+    setOcrError("");
     setOcrCandidates([]);
     try {
       const image = await prepareImageForOcr(file);
@@ -233,12 +247,37 @@ function App() {
       }
       setOcrCandidates(candidates);
     } catch (cause) {
-      setError(
+      setOcrError(
         cause instanceof Error ? cause.message : "Photo recognition failed.",
       );
     } finally {
       setRecognizing(false);
     }
+  }
+
+  function openPhotoPreview(file: File): void {
+    if (photoPreviewObjectUrl) URL.revokeObjectURL(photoPreviewObjectUrl);
+    photoPreviewObjectUrl = URL.createObjectURL(file);
+    setPhotoFile(file);
+    setPhotoPreview(photoPreviewObjectUrl);
+    setOcrCandidates([]);
+    setOcrError("");
+    if (!photoDialog.open) photoDialog.showModal();
+  }
+
+  function resetPhotoDialog(): void {
+    if (photoPreviewObjectUrl) URL.revokeObjectURL(photoPreviewObjectUrl);
+    photoPreviewObjectUrl = "";
+    setPhotoPreview("");
+    setPhotoFile(undefined);
+    setOcrCandidates([]);
+    setOcrError("");
+  }
+
+  async function applyOcrCandidate(candidate: KanjiCandidate): Promise<void> {
+    kanjiInput.value = candidate.character;
+    const applied = await performLookup(true, "photo");
+    if (applied) photoDialog.close();
   }
 
   async function createDocument(grid: ManuscriptGrid): Promise<void> {
@@ -373,6 +412,7 @@ function App() {
 
   onCleanup(() => {
     if (saveTimer !== undefined) window.clearTimeout(saveTimer);
+    if (photoPreviewObjectUrl) URL.revokeObjectURL(photoPreviewObjectUrl);
     paperCanvas()?.destroy();
   });
 
@@ -618,44 +658,22 @@ function App() {
               <button
                 class="photo-button"
                 onClick={() => photoInput.click()}
-                disabled={recognizing()}
                 type="button"
               >
-                <Show when={!recognizing()} fallback="Reading image…">
-                  <ImageUp aria-hidden="true" /> Recognize from photo
-                </Show>
+                <ImageUp aria-hidden="true" /> Recognize from photo
               </button>
               <input
                 ref={photoInput}
                 class="photo-input"
                 onChange={(event) => {
                   const file = event.currentTarget.files?.[0];
-                  if (file) void performOcr(file);
+                  if (file) openPhotoPreview(file);
                   event.currentTarget.value = "";
                 }}
                 type="file"
                 accept="image/*"
                 hidden
               />
-              <div class="ocr-candidates" aria-live="polite">
-                <Show when={ocrCandidates().length > 0}>
-                  <small>Choose a result</small>
-                </Show>
-                <For each={ocrCandidates().slice(0, 5)}>
-                  {(candidate) => (
-                    <button
-                      onClick={() => {
-                        kanjiInput.value = candidate.character;
-                        void performLookup(true);
-                      }}
-                      type="button"
-                      title={`${Math.round(candidate.confidence * 100)}% confidence`}
-                    >
-                      {candidate.character}
-                    </button>
-                  )}
-                </For>
-              </div>
               <p class="error-message" role="alert">
                 {error()}
               </p>
@@ -777,6 +795,128 @@ function App() {
           </For>
         </div>
       </section>
+
+      <dialog
+        ref={photoDialog}
+        class="photo-dialog"
+        aria-labelledby="photo-dialog-title"
+        onCancel={(event) => {
+          if (recognizing() || lookingUp()) event.preventDefault();
+        }}
+        onClose={resetPhotoDialog}
+      >
+        <button
+          class="dialog-close"
+          onClick={() => photoDialog.close()}
+          disabled={recognizing() || lookingUp()}
+          type="button"
+          aria-label="Close photo recognition"
+        >
+          <X aria-hidden="true" />
+        </button>
+        <div class="photo-dialog-heading">
+          <span class="photo-dialog-icon" aria-hidden="true">
+            <ScanLine />
+          </span>
+          <div>
+            <p class="eyebrow">PHOTO RECOGNITION</p>
+            <h2 id="photo-dialog-title">Recognize kanji</h2>
+          </div>
+        </div>
+
+        <div class="photo-preview">
+          <Show when={photoPreview()}>
+            {(source) => <img src={source()} alt="Selected kanji photo" />}
+          </Show>
+          <Show when={recognizing()}>
+            <div class="photo-scan-status" role="status">
+              <span class="startup-spinner" aria-hidden="true" />
+              <strong>Scanning image…</strong>
+              <small>Looking for kanji candidates</small>
+            </div>
+          </Show>
+        </div>
+
+        <Show
+          when={ocrCandidates().length > 0}
+          fallback={
+            <div class="photo-dialog-actions">
+              <button
+                class="photo-replace-button"
+                onClick={() => replacementPhotoInput.click()}
+                disabled={recognizing()}
+                type="button"
+              >
+                Choose another
+              </button>
+              <input
+                ref={replacementPhotoInput}
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  if (file) openPhotoPreview(file);
+                  event.currentTarget.value = "";
+                }}
+                type="file"
+                accept="image/*"
+                hidden
+              />
+              <button
+                class="photo-scan-button"
+                onClick={() => {
+                  const file = photoFile();
+                  if (file) void performOcr(file);
+                }}
+                disabled={!photoFile() || recognizing()}
+                type="button"
+              >
+                <ScanLine aria-hidden="true" />
+                {recognizing() ? "Scanning…" : "Start scan"}
+              </button>
+            </div>
+          }
+        >
+          <section class="photo-results" aria-live="polite">
+            <div>
+              <p class="eyebrow">SCAN RESULTS</p>
+              <h3>Choose the practiced kanji</h3>
+              <small>Selecting a result updates this practice sheet.</small>
+            </div>
+            <div class="photo-candidates">
+              <For each={ocrCandidates().slice(0, 5)}>
+                {(candidate, index) => (
+                  <button
+                    onClick={() => void applyOcrCandidate(candidate)}
+                    disabled={lookingUp()}
+                    type="button"
+                    aria-label={`Use ${candidate.character}, ${Math.round(candidate.confidence * 100)}% confidence`}
+                  >
+                    <span>{candidate.character}</span>
+                    <small>
+                      {index() === 0 ? "Best match · " : ""}
+                      {Math.round(candidate.confidence * 100)}%
+                    </small>
+                  </button>
+                )}
+              </For>
+            </div>
+            <button
+              class="photo-rescan-button"
+              onClick={() => {
+                setOcrCandidates([]);
+                setOcrError("");
+              }}
+              disabled={lookingUp()}
+              type="button"
+            >
+              Scan again
+            </button>
+          </section>
+        </Show>
+
+        <p class="photo-dialog-error" role="alert">
+          {ocrError()}
+        </p>
+      </dialog>
 
       <dialog ref={installDialog} class="install-dialog">
         <button
