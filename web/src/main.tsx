@@ -1,4 +1,12 @@
-import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+} from "solid-js";
 import { render } from "solid-js/web";
 import {
   BookOpen,
@@ -63,7 +71,9 @@ function App() {
   let installDialog!: HTMLDialogElement;
   let saveTimer: number | undefined;
 
-  const active = createMemo(() => documents().find((document) => document.id === activeDocumentId()));
+  const active = createMemo(() =>
+    documents().find((document) => document.id === activeDocumentId()),
+  );
   const activeGrid = createMemo(() => active()?.grid);
   const activePrompt = createMemo(() => active()?.prompt);
   const activeGuides = createMemo(() => active()?.showsGuides);
@@ -78,17 +88,24 @@ function App() {
     }
   });
 
-  function updateActive(update: Partial<PracticeDocument>): PracticeDocument | undefined {
+  function updateActive(
+    update: Partial<PracticeDocument>,
+  ): PracticeDocument | undefined {
     let updated: PracticeDocument | undefined;
-    setDocuments((current) => current.map((document) => {
-      if (document.id !== activeDocumentId()) return document;
-      updated = { ...document, ...update };
-      return updated;
-    }));
+    setDocuments((current) =>
+      current.map((document) => {
+        if (document.id !== activeDocumentId()) return document;
+        updated = { ...document, ...update };
+        return updated;
+      }),
+    );
     return updated;
   }
 
-  function markEdited(label: string, update: Partial<PracticeDocument> = {}): void {
+  function markEdited(
+    label: string,
+    update: Partial<PracticeDocument> = {},
+  ): void {
     updateActive({ ...update, updatedAt: new Date().toISOString() });
     setStatus(label);
     scheduleSave();
@@ -107,11 +124,19 @@ function App() {
     setSaving(true);
     try {
       await saveDocument(structuredClone(document));
-      setDocuments((current) => [...current].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)));
+      setDocuments((current) =>
+        [...current].sort((left, right) =>
+          right.updatedAt.localeCompare(left.updatedAt),
+        ),
+      );
       setStatus("Saved");
     } catch (cause) {
       setStatus("Save failed");
-      setError(cause instanceof Error ? cause.message : "The sheet could not be saved.");
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "The sheet could not be saved.",
+      );
     } finally {
       setSaving(false);
     }
@@ -127,7 +152,10 @@ function App() {
   function drawingChanged(strokes: InkStroke[]): void {
     const document = active();
     if (!document) return;
-    setUndoStack((current) => [...current.slice(-99), structuredClone(document.strokes)]);
+    setUndoStack((current) => [
+      ...current.slice(-99),
+      structuredClone(document.strokes),
+    ]);
     setRedoStack([]);
     markEdited("Editing", { strokes });
   }
@@ -155,7 +183,10 @@ function App() {
   function clearDrawing(): void {
     const document = active();
     if (!document?.strokes.length) return;
-    setUndoStack((current) => [...current.slice(-99), structuredClone(document.strokes)]);
+    setUndoStack((current) => [
+      ...current.slice(-99),
+      structuredClone(document.strokes),
+    ]);
     setRedoStack([]);
     markEdited("Cleared", { strokes: [] });
   }
@@ -165,7 +196,10 @@ function App() {
     setError("");
     try {
       const prompt = await lookupKanji(kanjiInput.value);
-      markEdited("Reference updated", { prompt, title: `${prompt.character} practice` });
+      markEdited("Reference updated", {
+        prompt,
+        title: `${prompt.character} practice`,
+      });
       setOcrCandidates([]);
       if (focusCanvas) inkCanvas.focus();
     } catch (cause) {
@@ -187,7 +221,10 @@ function App() {
         candidates = await recognizeKanjiLocally(image);
       } catch (localCause) {
         localFailure = localCause;
-        console.warn("Local handwriting recognition failed; using printed-text OCR.", localCause);
+        console.warn(
+          "Local handwriting recognition failed; using printed-text OCR.",
+          localCause,
+        );
         candidates = await recognizeKanji(image, "tesseract");
       }
       if (candidates.length === 0) {
@@ -196,7 +233,9 @@ function App() {
       }
       setOcrCandidates(candidates);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Photo recognition failed.");
+      setError(
+        cause instanceof Error ? cause.message : "Photo recognition failed.",
+      );
     } finally {
       setRecognizing(false);
     }
@@ -229,7 +268,11 @@ function App() {
 
   async function removeDocument(id: string): Promise<void> {
     const document = documents().find((candidate) => candidate.id === id);
-    if (!document || !window.confirm(`Delete “${document.title}”? This cannot be undone.`)) return;
+    if (
+      !document ||
+      !window.confirm(`Delete “${document.title}”? This cannot be undone.`)
+    )
+      return;
     await deleteDocument(id);
     let remaining = documents().filter((candidate) => candidate.id !== id);
     if (remaining.length === 0) {
@@ -243,7 +286,8 @@ function App() {
 
   function showSection(next: Section): void {
     setSection(next);
-    if (next === "practice") requestAnimationFrame(() => paperCanvas()?.resetViewport());
+    if (next === "practice")
+      requestAnimationFrame(() => paperCanvas()?.resetViewport());
   }
 
   function exportPdf(): void {
@@ -261,18 +305,23 @@ function App() {
   }
 
   function formatDate(value: string): string {
-    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(value));
   }
 
   onMount(() => {
-    setPaperCanvas(new PaperCanvas({
-      viewport,
-      surface,
-      backgroundCanvas,
-      inkCanvas,
-      guideLayer,
-      onChange: drawingChanged,
-    }));
+    setPaperCanvas(
+      new PaperCanvas({
+        viewport,
+        surface,
+        backgroundCanvas,
+        inkCanvas,
+        guideLayer,
+        onChange: drawingChanged,
+      }),
+    );
 
     void (async () => {
       try {
@@ -284,9 +333,14 @@ function App() {
         }
         setDocuments(stored);
         setActiveDocumentId(stored[0].id);
-        if (stored[0].prompt.strokeOrderSvgs.length === 0) void performLookup(false);
+        if (stored[0].prompt.strokeOrderSvgs.length === 0)
+          void performLookup(false);
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Could not load the local library.");
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "Could not load the local library.",
+        );
       } finally {
         setLoading(false);
       }
@@ -313,7 +367,9 @@ function App() {
     const strokes = activeStrokes();
     if (canvas && strokes) canvas.update({ strokes });
   });
-  createEffect(() => paperCanvas()?.update({ tool: tool(), width: strokeWidth() }));
+  createEffect(() =>
+    paperCanvas()?.update({ tool: tool(), width: strokeWidth() }),
+  );
 
   onCleanup(() => {
     if (saveTimer !== undefined) window.clearTimeout(saveTimer);
@@ -324,102 +380,325 @@ function App() {
     <main class="app-shell" aria-busy={loading()}>
       <Show when={loading()}>
         <div class="startup-loading" role="status" aria-live="polite">
-          <div class="startup-mark" aria-hidden="true">原</div>
+          <div class="startup-mark" aria-hidden="true">
+            原
+          </div>
           <span class="startup-spinner" aria-hidden="true" />
           <p>Opening your practice sheets…</p>
         </div>
       </Show>
 
       <nav class="navigation-rail" aria-label="Main navigation">
-        <div class="seal" aria-label="Genkou Youshi">原</div>
-        <button classList={{ "nav-button": true, "is-selected": section() === "practice" }} onClick={() => showSection("practice")} type="button">
-          <Pencil class="nav-icon" aria-hidden="true" /><span>Practice</span>
+        <div class="seal" aria-label="Genkou Youshi">
+          原
+        </div>
+        <button
+          classList={{
+            "nav-button": true,
+            "is-selected": section() === "practice",
+          }}
+          onClick={() => showSection("practice")}
+          type="button"
+        >
+          <Pencil class="nav-icon" aria-hidden="true" />
+          <span>Practice</span>
         </button>
-        <button classList={{ "nav-button": true, "is-selected": section() === "library" }} onClick={() => showSection("library")} type="button">
-          <BookOpen class="nav-icon" aria-hidden="true" /><span>Library</span>
+        <button
+          classList={{
+            "nav-button": true,
+            "is-selected": section() === "library",
+          }}
+          onClick={() => showSection("library")}
+          type="button"
+        >
+          <BookOpen class="nav-icon" aria-hidden="true" />
+          <span>Library</span>
         </button>
         <span class="nav-spacer" />
-        <button class="nav-button install-help" onClick={() => installDialog.showModal()} type="button" aria-label="Install help">
-          <Download class="nav-icon" aria-hidden="true" /><span>Install</span>
+        <button
+          class="nav-button install-help"
+          onClick={() => installDialog.showModal()}
+          type="button"
+          aria-label="Install help"
+        >
+          <Download class="nav-icon" aria-hidden="true" />
+          <span>Install</span>
         </button>
       </nav>
 
       <section class="practice-section" hidden={section() !== "practice"}>
         <header class="workspace-header">
-          <div><p class="eyebrow">GENKOU YOUSHI</p><h1>Writing practice</h1></div>
+          <div>
+            <p class="eyebrow">GENKOU YOUSHI</p>
+            <h1>Writing practice</h1>
+          </div>
           <div class="header-actions">
-            <button class="icon-button undo-button" onClick={undo} disabled={undoStack().length === 0} type="button" title="Undo" aria-label="Undo"><Undo2 aria-hidden="true" /></button>
-            <button class="icon-button redo-button" onClick={redo} disabled={redoStack().length === 0} type="button" title="Redo" aria-label="Redo"><Redo2 aria-hidden="true" /></button>
-            <button class="export-button" onClick={exportPdf} type="button"><FileDown aria-hidden="true" /> <span>Export PDF</span></button>
-            <button class="icon-button reference-toggle" onClick={() => setReferenceOpen((open) => !open)} type="button" title="Reference" aria-label="Toggle reference panel"><PanelRight aria-hidden="true" /></button>
-            <span classList={{ "save-status": true, "is-saving": saving() }}><i /><span>{status()}</span></span>
+            <button
+              class="icon-button undo-button"
+              onClick={undo}
+              disabled={undoStack().length === 0}
+              type="button"
+              title="Undo"
+              aria-label="Undo"
+            >
+              <Undo2 aria-hidden="true" />
+            </button>
+            <button
+              class="icon-button redo-button"
+              onClick={redo}
+              disabled={redoStack().length === 0}
+              type="button"
+              title="Redo"
+              aria-label="Redo"
+            >
+              <Redo2 aria-hidden="true" />
+            </button>
+            <button class="export-button" onClick={exportPdf} type="button">
+              <FileDown aria-hidden="true" /> <span>Export PDF</span>
+            </button>
+            <button
+              class="icon-button reference-toggle"
+              onClick={() => setReferenceOpen((open) => !open)}
+              type="button"
+              title="Reference"
+              aria-label="Toggle reference panel"
+            >
+              <PanelRight aria-hidden="true" />
+            </button>
+            <span classList={{ "save-status": true, "is-saving": saving() }}>
+              <i />
+              <span>{status()}</span>
+            </span>
           </div>
         </header>
 
-        <div classList={{ "practice-content": true, "is-reference-open": referenceOpen() }}>
+        <div
+          classList={{
+            "practice-content": true,
+            "is-reference-open": referenceOpen(),
+          }}
+        >
           <div class="paper-workspace">
-            <div ref={viewport} class="paper-viewport" aria-label="Manuscript paper drawing area">
+            <div
+              ref={viewport}
+              class="paper-viewport"
+              aria-label="Manuscript paper drawing area"
+            >
               <div ref={surface} class="paper-surface">
-                <canvas ref={backgroundCanvas} class="paper-background" aria-hidden="true" />
+                <canvas
+                  ref={backgroundCanvas}
+                  class="paper-background"
+                  aria-hidden="true"
+                />
                 <div ref={guideLayer} class="guide-layer" aria-hidden="true" />
                 <canvas ref={inkCanvas} class="ink-canvas" />
               </div>
             </div>
 
             <div class="tool-shelf" role="toolbar" aria-label="Writing tools">
-              <For each={[{ id: "brush", icon: PenTool, label: "Pen" }, { id: "pencil", icon: Pencil, label: "Pencil" }, { id: "eraser", icon: Eraser, label: "Eraser" }] as const}>
+              <For
+                each={
+                  [
+                    { id: "brush", icon: PenTool, label: "Pen" },
+                    { id: "pencil", icon: Pencil, label: "Pencil" },
+                    { id: "eraser", icon: Eraser, label: "Eraser" },
+                  ] as const
+                }
+              >
                 {(item) => {
                   const ToolIcon = item.icon;
-                  return <button classList={{ "tool-button": true, "is-selected": tool() === item.id }} onClick={() => setTool(item.id)} type="button"><ToolIcon aria-hidden="true" /> {item.label}</button>;
+                  return (
+                    <button
+                      classList={{
+                        "tool-button": true,
+                        "is-selected": tool() === item.id,
+                      }}
+                      onClick={() => setTool(item.id)}
+                      type="button"
+                    >
+                      <ToolIcon aria-hidden="true" /> {item.label}
+                    </button>
+                  );
                 }}
               </For>
               <span class="tool-divider" />
-              <label classList={{ "stroke-control": true, "is-disabled": tool() === "eraser" }}>
+              <label
+                classList={{
+                  "stroke-control": true,
+                  "is-disabled": tool() === "eraser",
+                }}
+              >
                 <span>Line weight</span>
-                <input class="stroke-width" onInput={(event) => setStrokeWidth(Number(event.currentTarget.value))} type="range" min="1" max="12" value={strokeWidth()} step="0.5" />
-                <output class="stroke-width-output">{strokeWidth().toFixed(1)}</output>
+                <input
+                  class="stroke-width"
+                  onInput={(event) =>
+                    setStrokeWidth(Number(event.currentTarget.value))
+                  }
+                  type="range"
+                  min="1"
+                  max="12"
+                  value={strokeWidth()}
+                  step="0.5"
+                />
+                <output class="stroke-width-output">
+                  {strokeWidth().toFixed(1)}
+                </output>
               </label>
               <span class="tool-spacer" />
-              <button class="clear-button" onClick={clearDrawing} type="button" aria-label="Clear drawing" title="Clear drawing"><Trash2 aria-hidden="true" /></button>
+              <button
+                class="clear-button"
+                onClick={clearDrawing}
+                type="button"
+                aria-label="Clear drawing"
+                title="Clear drawing"
+              >
+                <Trash2 aria-hidden="true" />
+              </button>
             </div>
           </div>
 
           <aside class="reference-panel">
-            <div class="drawer-heading"><strong>Reference</strong><button class="drawer-close" onClick={() => setReferenceOpen(false)} type="button" aria-label="Close reference panel"><X aria-hidden="true" /></button></div>
+            <div class="drawer-heading">
+              <strong>Reference</strong>
+              <button
+                class="drawer-close"
+                onClick={() => setReferenceOpen(false)}
+                type="button"
+                aria-label="Close reference panel"
+              >
+                <X aria-hidden="true" />
+              </button>
+            </div>
             <div class="reference-card kanji-card">
-              <div class="card-label"><span>KANJI</span><strong class="stroke-count">{activePrompt()?.strokeOrderSvgs.length ? `${activePrompt()!.strokeOrderSvgs.length} strokes` : "Reference"}</strong></div>
+              <div class="card-label">
+                <span>KANJI</span>
+                <strong class="stroke-count">
+                  {activePrompt()?.strokeOrderSvgs.length
+                    ? `${activePrompt()!.strokeOrderSvgs.length} strokes`
+                    : "Reference"}
+                </strong>
+              </div>
               <div class="kanji-preview">
-                <Show when={referenceImage()} fallback={<span>{activePrompt()?.character ?? "永"}</span>}>
-                  {(source) => <img src={source()} alt={`${activePrompt()?.character ?? "Kanji"} stroke order`} />}
+                <Show
+                  when={referenceImage()}
+                  fallback={<span>{activePrompt()?.character ?? "永"}</span>}
+                >
+                  {(source) => (
+                    <img
+                      src={source()}
+                      alt={`${activePrompt()?.character ?? "Kanji"} stroke order`}
+                    />
+                  )}
                 </Show>
               </div>
-              <form class="kanji-form" onSubmit={(event) => { event.preventDefault(); void performLookup(true); }}>
-                <input ref={kanjiInput} class="kanji-input" type="text" inputmode="text" value={activePrompt()?.character ?? "永"} maxlength="2" aria-label="Kanji" />
-                <button type="submit" disabled={lookingUp()} aria-label="Look up kanji">{lookingUp() ? "…" : <Search aria-hidden="true" />}</button>
+              <form
+                class="kanji-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void performLookup(true);
+                }}
+              >
+                <input
+                  ref={kanjiInput}
+                  class="kanji-input"
+                  type="text"
+                  inputmode="text"
+                  value={activePrompt()?.character ?? "永"}
+                  maxlength="2"
+                  aria-label="Kanji"
+                />
+                <button
+                  type="submit"
+                  disabled={lookingUp()}
+                  aria-label="Look up kanji"
+                >
+                  {lookingUp() ? "…" : <Search aria-hidden="true" />}
+                </button>
               </form>
-              <button class="photo-button" onClick={() => photoInput.click()} disabled={recognizing()} type="button">
-                <Show when={!recognizing()} fallback="Reading image…"><ImageUp aria-hidden="true" /> Recognize from photo</Show>
+              <button
+                class="photo-button"
+                onClick={() => photoInput.click()}
+                disabled={recognizing()}
+                type="button"
+              >
+                <Show when={!recognizing()} fallback="Reading image…">
+                  <ImageUp aria-hidden="true" /> Recognize from photo
+                </Show>
               </button>
-              <input ref={photoInput} class="photo-input" onChange={(event) => { const file = event.currentTarget.files?.[0]; if (file) void performOcr(file); event.currentTarget.value = ""; }} type="file" accept="image/*" hidden />
+              <input
+                ref={photoInput}
+                class="photo-input"
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  if (file) void performOcr(file);
+                  event.currentTarget.value = "";
+                }}
+                type="file"
+                accept="image/*"
+                hidden
+              />
               <div class="ocr-candidates" aria-live="polite">
-                <Show when={ocrCandidates().length > 0}><small>Choose a result</small></Show>
-                <For each={ocrCandidates().slice(0, 5)}>{(candidate) => <button onClick={() => { kanjiInput.value = candidate.character; void performLookup(true); }} type="button" title={`${Math.round(candidate.confidence * 100)}% confidence`}>{candidate.character}</button>}</For>
+                <Show when={ocrCandidates().length > 0}>
+                  <small>Choose a result</small>
+                </Show>
+                <For each={ocrCandidates().slice(0, 5)}>
+                  {(candidate) => (
+                    <button
+                      onClick={() => {
+                        kanjiInput.value = candidate.character;
+                        void performLookup(true);
+                      }}
+                      type="button"
+                      title={`${Math.round(candidate.confidence * 100)}% confidence`}
+                    >
+                      {candidate.character}
+                    </button>
+                  )}
+                </For>
               </div>
-              <p class="error-message" role="alert">{error()}</p>
+              <p class="error-message" role="alert">
+                {error()}
+              </p>
             </div>
 
             <div class="reference-card">
               <p class="card-title">PAPER GUIDES</p>
               <label class="guide-control">
-                <span><strong>Tracing guides</strong><small>Full kanji to first stroke</small></span>
-                <input class="guide-toggle" onChange={(event) => markEdited("Guide updated", { showsGuides: event.currentTarget.checked })} type="checkbox" checked={active()?.showsGuides ?? true} />
+                <span>
+                  <strong>Tracing guides</strong>
+                  <small>Full kanji to first stroke</small>
+                </span>
+                <input
+                  class="guide-toggle"
+                  onChange={(event) =>
+                    markEdited("Guide updated", {
+                      showsGuides: event.currentTarget.checked,
+                    })
+                  }
+                  type="checkbox"
+                  checked={active()?.showsGuides ?? true}
+                />
               </label>
             </div>
 
             <div class="reference-card session-card">
               <p class="card-title">SESSION</p>
-              <div><span>Paper</span><strong class="paper-size">{active() ? `${active()!.grid.columns} × ${active()!.grid.rows}` : "20 × 20"}</strong></div>
-              <div><span>Capacity</span><strong class="paper-capacity">{active() ? `${active()!.grid.columns * active()!.grid.rows} 字` : "400 字"}</strong></div>
+              <div>
+                <span>Paper</span>
+                <strong class="paper-size">
+                  {active()
+                    ? `${active()!.grid.columns} × ${active()!.grid.rows}`
+                    : "20 × 20"}
+                </strong>
+              </div>
+              <div>
+                <span>Capacity</span>
+                <strong class="paper-capacity">
+                  {active()
+                    ? `${active()!.grid.columns * active()!.grid.rows} 字`
+                    : "400 字"}
+                </strong>
+              </div>
             </div>
           </aside>
           <div class="drawer-scrim" onClick={() => setReferenceOpen(false)} />
@@ -428,35 +707,95 @@ function App() {
 
       <section class="library-section" hidden={section() !== "library"}>
         <header class="library-header">
-          <div><p class="eyebrow">LOCAL LIBRARY</p><h1>Practice sheets</h1></div>
-          <button class="new-sheet-button" onClick={() => setNewSheetPickerOpen((open) => !open)} type="button"><Plus aria-hidden="true" /> New sheet</button>
+          <div>
+            <p class="eyebrow">LOCAL LIBRARY</p>
+            <h1>Practice sheets</h1>
+          </div>
+          <button
+            class="new-sheet-button"
+            onClick={() => setNewSheetPickerOpen((open) => !open)}
+            type="button"
+          >
+            <Plus aria-hidden="true" /> New sheet
+          </button>
         </header>
         <div class="new-sheet-picker" hidden={!newSheetPickerOpen()}>
           <div>
             <p class="card-title">CHOOSE PAPER</p>
-            <button class="sheet-choice" onClick={() => void createDocument({ columns: 20, rows: 20 })} type="button"><Sheet class="sheet-icon" aria-hidden="true" /><strong>Standard</strong><small>20 × 20 · 400 characters</small></button>
-            <button class="sheet-choice" onClick={() => void createDocument({ columns: 10, rows: 20 })} type="button"><Sheet class="sheet-icon compact" aria-hidden="true" /><strong>Compact</strong><small>10 × 20 · 200 characters</small></button>
+            <button
+              class="sheet-choice"
+              onClick={() => void createDocument({ columns: 20, rows: 20 })}
+              type="button"
+            >
+              <Sheet class="sheet-icon" aria-hidden="true" />
+              <strong>Standard</strong>
+              <small>20 × 20 · 400 characters</small>
+            </button>
+            <button
+              class="sheet-choice"
+              onClick={() => void createDocument({ columns: 10, rows: 20 })}
+              type="button"
+            >
+              <Sheet class="sheet-icon compact" aria-hidden="true" />
+              <strong>Compact</strong>
+              <small>10 × 20 · 200 characters</small>
+            </button>
           </div>
         </div>
         <div class="document-grid">
-          <For each={documents()}>{(practiceDocument) => (
-            <article class="document-card">
-              <button class="document-open" onClick={() => void openDocument(practiceDocument.id)} type="button" aria-label={`Open ${practiceDocument.title}`}>
-                <span class="document-character">{practiceDocument.prompt.character}</span>
-                <span><strong>{practiceDocument.title}</strong><small>{practiceDocument.grid.columns * practiceDocument.grid.rows} characters · {formatDate(practiceDocument.updatedAt)}</small></span>
-              </button>
-              <button class="document-delete" onClick={() => void removeDocument(practiceDocument.id)} type="button" aria-label={`Delete ${practiceDocument.title}`}><Trash2 aria-hidden="true" /></button>
-            </article>
-          )}</For>
+          <For each={documents()}>
+            {(practiceDocument) => (
+              <article class="document-card">
+                <button
+                  class="document-open"
+                  onClick={() => void openDocument(practiceDocument.id)}
+                  type="button"
+                  aria-label={`Open ${practiceDocument.title}`}
+                >
+                  <span class="document-character">
+                    {practiceDocument.prompt.character}
+                  </span>
+                  <span>
+                    <strong>{practiceDocument.title}</strong>
+                    <small>
+                      {practiceDocument.grid.columns *
+                        practiceDocument.grid.rows}{" "}
+                      characters · {formatDate(practiceDocument.updatedAt)}
+                    </small>
+                  </span>
+                </button>
+                <button
+                  class="document-delete"
+                  onClick={() => void removeDocument(practiceDocument.id)}
+                  type="button"
+                  aria-label={`Delete ${practiceDocument.title}`}
+                >
+                  <Trash2 aria-hidden="true" />
+                </button>
+              </article>
+            )}
+          </For>
         </div>
       </section>
 
       <dialog ref={installDialog} class="install-dialog">
-        <button class="dialog-close" onClick={() => installDialog.close()} type="button" aria-label="Close"><X aria-hidden="true" /></button>
+        <button
+          class="dialog-close"
+          onClick={() => installDialog.close()}
+          type="button"
+          aria-label="Close"
+        >
+          <X aria-hidden="true" />
+        </button>
         <div class="seal dialog-seal">原</div>
         <h2>Install on your device</h2>
-        <p>Open your browser menu or Share sheet, then choose <strong>Install app</strong> or <strong>Add to Home Screen</strong>.</p>
-        <p class="dialog-note">Your sheets stay in this browser. Export important work as a backup.</p>
+        <p>
+          Open your browser menu or Share sheet, then choose{" "}
+          <strong>Install app</strong> or <strong>Add to Home Screen</strong>.
+        </p>
+        <p class="dialog-note">
+          Your sheets stay in this browser. Export important work as a backup.
+        </p>
       </dialog>
     </main>
   );
@@ -468,8 +807,12 @@ render(() => <App />, root);
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   const serviceWorkerUrl = `/app/sw.js?v=${__BUILD_ID__}`;
-  window.addEventListener("load", () => void navigator.serviceWorker.register(
-    serviceWorkerUrl,
-    { scope: "/app/", updateViaCache: "none" },
-  ));
+  window.addEventListener(
+    "load",
+    () =>
+      void navigator.serviceWorker.register(serviceWorkerUrl, {
+        scope: "/app/",
+        updateViaCache: "none",
+      }),
+  );
 }

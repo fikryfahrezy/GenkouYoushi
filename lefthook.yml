@@ -1,0 +1,12 @@
+pre-commit:
+  jobs:
+    - name: format web
+      root: web/
+      glob: "*.{js,jsx,ts,tsx,mjs,cjs,json,jsonc,css,scss,html,md,mdx,yaml,yml}"
+      run: bun run format -- {staged_files}
+      stage_fixed: true
+
+    - name: lint web
+      root: web/
+      glob: "*.{js,jsx,ts,tsx,mjs,cjs}"
+      run: bun run lint -- {staged_files}

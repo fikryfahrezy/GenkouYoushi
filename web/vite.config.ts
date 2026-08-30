@@ -51,8 +51,10 @@ export default defineConfig({
             source: runtimeFile(asset.source),
           });
         }
-        const serviceWorker = readFileSync(resolve("sw.template.js"), "utf8")
-          .replace("__BUILD_ID__", BUILD_ID);
+        const serviceWorker = readFileSync(
+          resolve("sw.template.js"),
+          "utf8",
+        ).replace("__BUILD_ID__", BUILD_ID);
         this.emitFile({
           type: "asset",
           fileName: "app/sw.js",

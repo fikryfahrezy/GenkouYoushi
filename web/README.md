@@ -17,6 +17,24 @@ Set the external service URL in `.env.local`:
 VITE_API_BASE_URL=http://localhost:8000
 ```
 
+## Code quality
+
+Run Oxlint and Oxfmt from the `web` directory:
+
+```sh
+bun run lint
+bun run lint:fix
+bun run format
+bun run format:check
+```
+
+The repository's Lefthook pre-commit hook formats and lints staged web files. Install it once
+from the repository root after cloning:
+
+```sh
+lefthook install
+```
+
 ## External API contract
 
 The PWA is backend-agnostic. `VITE_API_BASE_URL` must point to an HTTP service that permits requests from the PWA origin and implements:
@@ -47,9 +65,7 @@ The `provider` property is optional. OCR returns ranked candidates:
 
 ```json
 {
-  "candidates": [
-    { "character": "永", "confidence": 0.92 }
-  ]
+  "candidates": [{ "character": "永", "confidence": 0.92 }]
 }
 ```
 

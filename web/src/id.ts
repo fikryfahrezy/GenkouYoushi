@@ -1,6 +1,7 @@
 export function createID(): string {
   const webCrypto = globalThis.crypto;
-  if (typeof webCrypto?.randomUUID === "function") return webCrypto.randomUUID();
+  if (typeof webCrypto?.randomUUID === "function")
+    return webCrypto.randomUUID();
 
   const bytes = new Uint8Array(16);
   if (typeof webCrypto?.getRandomValues === "function") {

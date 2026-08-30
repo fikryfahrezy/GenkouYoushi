@@ -13,8 +13,10 @@ const icons = {
   pencil: Pencil,
 };
 
-document.querySelectorAll<HTMLElement>("[data-lucide-icon]").forEach((element) => {
-  const name = element.dataset.lucideIcon as keyof typeof icons;
-  const Icon = icons[name];
-  if (Icon) render(() => <Icon aria-hidden="true" />, element);
-});
+document
+  .querySelectorAll<HTMLElement>("[data-lucide-icon]")
+  .forEach((element) => {
+    const name = element.dataset.lucideIcon as keyof typeof icons;
+    const Icon = icons[name];
+    if (Icon) render(() => <Icon aria-hidden="true" />, element);
+  });

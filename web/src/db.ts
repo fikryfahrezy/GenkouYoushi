@@ -16,14 +16,16 @@ function openDatabase(): Promise<IDBDatabase> {
     };
 
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error("Could not open local library."));
+    request.onerror = () =>
+      reject(request.error ?? new Error("Could not open local library."));
   });
 }
 
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error("Local library operation failed."));
+    request.onerror = () =>
+      reject(request.error ?? new Error("Local library operation failed."));
   });
 }
 
@@ -32,9 +34,13 @@ export async function loadDocuments(): Promise<PracticeDocument[]> {
   try {
     const transaction = database.transaction(DOCUMENT_STORE, "readonly");
     const documents = await requestResult(
-      transaction.objectStore(DOCUMENT_STORE).getAll() as IDBRequest<PracticeDocument[]>,
+      transaction.objectStore(DOCUMENT_STORE).getAll() as IDBRequest<
+        PracticeDocument[]
+      >,
     );
-    return documents.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+    return documents.sort((left, right) =>
+      right.updatedAt.localeCompare(left.updatedAt),
+    );
   } finally {
     database.close();
   }
@@ -43,7 +49,12 @@ export async function loadDocuments(): Promise<PracticeDocument[]> {
 export async function saveDocument(document: PracticeDocument): Promise<void> {
   const database = await openDatabase();
   try {
-    await requestResult(database.transaction(DOCUMENT_STORE, "readwrite").objectStore(DOCUMENT_STORE).put(document));
+    await requestResult(
+      database
+        .transaction(DOCUMENT_STORE, "readwrite")
+        .objectStore(DOCUMENT_STORE)
+        .put(document),
+    );
   } finally {
     database.close();
   }
@@ -52,7 +63,12 @@ export async function saveDocument(document: PracticeDocument): Promise<void> {
 export async function deleteDocument(id: string): Promise<void> {
   const database = await openDatabase();
   try {
-    await requestResult(database.transaction(DOCUMENT_STORE, "readwrite").objectStore(DOCUMENT_STORE).delete(id));
+    await requestResult(
+      database
+        .transaction(DOCUMENT_STORE, "readwrite")
+        .objectStore(DOCUMENT_STORE)
+        .delete(id),
+    );
   } finally {
     database.close();
   }

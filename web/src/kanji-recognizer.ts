@@ -18,17 +18,26 @@ function loadSession(): Promise<ort.InferenceSession> {
     // A single WASM thread works on iOS/Safari without cross-origin isolation.
     ort.env.wasm.numThreads = 1;
     ort.env.wasm.wasmPaths = {
-      mjs: new URL(assetUrl("ort/ort-wasm-simd-threaded.js"), window.location.href).href,
-      wasm: new URL(assetUrl("ort/ort-wasm-simd-threaded.wasm"), window.location.href).href,
+      mjs: new URL(
+        assetUrl("ort/ort-wasm-simd-threaded.js"),
+        window.location.href,
+      ).href,
+      wasm: new URL(
+        assetUrl("ort/ort-wasm-simd-threaded.wasm"),
+        window.location.href,
+      ).href,
     };
     sessionPromise = ort.InferenceSession.create(assetUrl(MODEL_PATH), {
       executionProviders: ["wasm"],
       graphOptimizationLevel: "all",
     }).catch((cause) => {
       sessionPromise = undefined;
-      throw new Error("The handwriting recognition model could not load. Reload the app and try again.", {
-        cause,
-      });
+      throw new Error(
+        "The handwriting recognition model could not load. Reload the app and try again.",
+        {
+          cause,
+        },
+      );
     });
   }
   return sessionPromise;
@@ -38,7 +47,10 @@ function loadLabels(): Promise<string[]> {
   if (!labelsPromise) {
     labelsPromise = fetch(assetUrl(LABELS_PATH))
       .then((response) => {
-        if (!response.ok) throw new Error(`Could not load recognition labels (${response.status}).`);
+        if (!response.ok)
+          throw new Error(
+            `Could not load recognition labels (${response.status}).`,
+          );
         return response.text();
       })
       .then((value) => [...value.trim()]);
@@ -46,13 +58,23 @@ function loadLabels(): Promise<string[]> {
   return labelsPromise;
 }
 
-function borderAverage(grayscale: Uint8Array, width: number, height: number): number {
+function borderAverage(
+  grayscale: Uint8Array,
+  width: number,
+  height: number,
+): number {
   let total = 0;
   let count = 0;
   const border = Math.max(1, Math.round(Math.min(width, height) * 0.04));
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      if (x >= border && x < width - border && y >= border && y < height - border) continue;
+      if (
+        x >= border &&
+        x < width - border &&
+        y >= border &&
+        y < height - border
+      )
+        continue;
       total += grayscale[y * width + x];
       count += 1;
     }
@@ -61,9 +83,14 @@ function borderAverage(grayscale: Uint8Array, width: number, height: number): nu
 }
 
 async function imageTensor(image: Blob): Promise<ort.Tensor> {
-  const bitmap = await createImageBitmap(image, { imageOrientation: "from-image" });
+  const bitmap = await createImageBitmap(image, {
+    imageOrientation: "from-image",
+  });
   const maximumEdge = 512;
-  const scale = Math.min(maximumEdge / Math.max(bitmap.width, bitmap.height), 1);
+  const scale = Math.min(
+    maximumEdge / Math.max(bitmap.width, bitmap.height),
+    1,
+  );
   const width = Math.max(1, Math.round(bitmap.width * scale));
   const height = Math.max(1, Math.round(bitmap.height * scale));
   const source = document.createElement("canvas");
@@ -80,11 +107,12 @@ async function imageTensor(image: Blob): Promise<ort.Tensor> {
   for (let index = 0; index < grayscale.length; index += 1) {
     const offset = index * 4;
     const alpha = pixels.data[offset + 3] / 255;
-    const value = (
-      0.299 * pixels.data[offset]
-      + 0.587 * pixels.data[offset + 1]
-      + 0.114 * pixels.data[offset + 2]
-    ) * alpha + 255 * (1 - alpha);
+    const value =
+      (0.299 * pixels.data[offset] +
+        0.587 * pixels.data[offset + 1] +
+        0.114 * pixels.data[offset + 2]) *
+        alpha +
+      255 * (1 - alpha);
     grayscale[index] = value;
     imageAverage += value;
   }
@@ -138,7 +166,9 @@ async function imageTensor(image: Blob): Promise<ort.Tensor> {
   const inputCanvas = document.createElement("canvas");
   inputCanvas.width = INPUT_SIZE;
   inputCanvas.height = INPUT_SIZE;
-  const inputContext = inputCanvas.getContext("2d", { willReadFrequently: true });
+  const inputContext = inputCanvas.getContext("2d", {
+    willReadFrequently: true,
+  });
   if (!inputContext) throw new Error("Image processing is unavailable.");
   inputContext.fillStyle = "#000";
   inputContext.fillRect(0, 0, INPUT_SIZE, INPUT_SIZE);
@@ -154,13 +184,21 @@ async function imageTensor(image: Blob): Promise<ort.Tensor> {
     INPUT_SIZE,
   );
 
-  const inputPixels = inputContext.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE).data;
+  const inputPixels = inputContext.getImageData(
+    0,
+    0,
+    INPUT_SIZE,
+    INPUT_SIZE,
+  ).data;
   const input = new Float32Array(INPUT_SIZE * INPUT_SIZE);
-  for (let index = 0; index < input.length; index += 1) input[index] = inputPixels[index * 4];
+  for (let index = 0; index < input.length; index += 1)
+    input[index] = inputPixels[index * 4];
   return new ort.Tensor("float32", input, [1, 1, INPUT_SIZE, INPUT_SIZE]);
 }
 
-export async function recognizeKanjiLocally(image: Blob): Promise<KanjiCandidate[]> {
+export async function recognizeKanjiLocally(
+  image: Blob,
+): Promise<KanjiCandidate[]> {
   const [session, labels, tensor] = await Promise.all([
     loadSession(),
     loadLabels(),
@@ -169,7 +207,9 @@ export async function recognizeKanjiLocally(image: Blob): Promise<KanjiCandidate
   const output = await session.run({ image: tensor });
   const probabilities = output.probs?.data;
   if (!probabilities || probabilities.length !== labels.length) {
-    throw new Error("The local recognition model returned an unexpected result.");
+    throw new Error(
+      "The local recognition model returned an unexpected result.",
+    );
   }
 
   const candidates: KanjiCandidate[] = [];

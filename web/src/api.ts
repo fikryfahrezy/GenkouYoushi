@@ -1,8 +1,11 @@
 import { firstKanji, type KanjiCandidate } from "./models";
 import { normalizeSvg } from "./svg";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "")
-  ?? "https://kanji-api.fahrezy.work";
+const API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(
+    /\/$/,
+    "",
+  ) ?? "https://kanji-api.fahrezy.work";
 
 interface KanjiResponse {
   kanji: string;
@@ -16,11 +19,15 @@ interface OcrResponse {
 export type OcrProvider = "tesseract" | "google";
 
 function decodeBase64Utf8(value: string): string {
-  const bytes = Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
+  const bytes = Uint8Array.from(atob(value), (character) =>
+    character.charCodeAt(0),
+  );
   return normalizeSvg(new TextDecoder().decode(bytes));
 }
 
-export async function lookupKanji(character: string): Promise<{ character: string; strokeOrderSvgs: string[] }> {
+export async function lookupKanji(
+  character: string,
+): Promise<{ character: string; strokeOrderSvgs: string[] }> {
   const normalized = [...character.trim()][0];
   if (!normalized || !firstKanji(normalized)) {
     throw new Error("Enter one kanji character.");
@@ -32,7 +39,8 @@ export async function lookupKanji(character: string): Promise<{ character: strin
   );
 
   if (response.status === 404) throw new Error("That character was not found.");
-  if (!response.ok) throw new Error(`Kanji lookup failed (${response.status}).`);
+  if (!response.ok)
+    throw new Error(`Kanji lookup failed (${response.status}).`);
 
   const payload = (await response.json()) as KanjiResponse;
   return {
@@ -41,7 +49,10 @@ export async function lookupKanji(character: string): Promise<{ character: strin
   };
 }
 
-export async function recognizeKanji(image: Blob, provider?: OcrProvider): Promise<KanjiCandidate[]> {
+export async function recognizeKanji(
+  image: Blob,
+  provider?: OcrProvider,
+): Promise<KanjiCandidate[]> {
   const imageBase64 = await blobToBase64(image);
   const response = await fetch(`${API_BASE_URL}/ocr/kanji`, {
     method: "POST",
@@ -57,16 +68,26 @@ export async function recognizeKanji(image: Blob, provider?: OcrProvider): Promi
     throw new Error("Photo recognition is not configured on this server yet.");
   }
   if (!response.ok) {
-    throw new Error(await responseError(response, `Photo recognition failed (${response.status}).`));
+    throw new Error(
+      await responseError(
+        response,
+        `Photo recognition failed (${response.status}).`,
+      ),
+    );
   }
 
   const payload = (await response.json()) as OcrResponse;
-  return payload.candidates.filter((candidate) => firstKanji(candidate.character));
+  return payload.candidates.filter((candidate) =>
+    firstKanji(candidate.character),
+  );
 }
 
-async function responseError(response: Response, fallback: string): Promise<string> {
+async function responseError(
+  response: Response,
+  fallback: string,
+): Promise<string> {
   try {
-    const payload = await response.json() as { detail?: unknown };
+    const payload = (await response.json()) as { detail?: unknown };
     return typeof payload.detail === "string" ? payload.detail : fallback;
   } catch {
     return fallback;
@@ -80,15 +101,21 @@ function blobToBase64(blob: Blob): Promise<string> {
       const value = String(reader.result);
       resolve(value.slice(value.indexOf(",") + 1));
     };
-    reader.onerror = () => reject(reader.error ?? new Error("Could not read the selected image."));
+    reader.onerror = () =>
+      reject(reader.error ?? new Error("Could not read the selected image."));
     reader.readAsDataURL(blob);
   });
 }
 
 export async function prepareImageForOcr(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  const bitmap = await createImageBitmap(file, {
+    imageOrientation: "from-image",
+  });
   const maximumEdge = 1_280;
-  const scale = Math.min(maximumEdge / Math.max(bitmap.width, bitmap.height), 1);
+  const scale = Math.min(
+    maximumEdge / Math.max(bitmap.width, bitmap.height),
+    1,
+  );
   const width = Math.max(1, Math.round(bitmap.width * scale));
   const height = Math.max(1, Math.round(bitmap.height * scale));
   const canvas = document.createElement("canvas");
@@ -103,7 +130,10 @@ export async function prepareImageForOcr(file: File): Promise<Blob> {
 
   return await new Promise((resolve, reject) => {
     canvas.toBlob(
-      (blob) => blob ? resolve(blob) : reject(new Error("Could not prepare the image.")),
+      (blob) =>
+        blob
+          ? resolve(blob)
+          : reject(new Error("Could not prepare the image.")),
       "image/jpeg",
       0.84,
     );

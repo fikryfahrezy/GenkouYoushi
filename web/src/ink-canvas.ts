@@ -1,5 +1,11 @@
 import { createID } from "./id";
-import type { InkPoint, InkStroke, ManuscriptGrid, PracticePrompt, WritingTool } from "./models";
+import type {
+  InkPoint,
+  InkStroke,
+  ManuscriptGrid,
+  PracticePrompt,
+  WritingTool,
+} from "./models";
 import { svgDataUrl } from "./svg";
 
 interface PaperCanvasOptions {
@@ -52,10 +58,22 @@ export class PaperCanvas {
   private strokesBeforeErase: InkStroke[] | undefined;
   private touches = new Map<number, TouchLocation>();
   private gestureStart:
-    | { distance: number; center: TouchLocation; scale: number; offsetX: number; offsetY: number }
+    | {
+        distance: number;
+        center: TouchLocation;
+        scale: number;
+        offsetX: number;
+        offsetY: number;
+      }
     | undefined;
   private panStart:
-    | { pointerId: number; x: number; y: number; offsetX: number; offsetY: number }
+    | {
+        pointerId: number;
+        x: number;
+        y: number;
+        offsetX: number;
+        offsetY: number;
+      }
     | undefined;
   private pointerInside = false;
   private spacePressed = false;
@@ -78,7 +96,8 @@ export class PaperCanvas {
     this.guideLayer = options.guideLayer;
     this.onChange = options.onChange;
     const context = this.inkCanvas.getContext("2d");
-    if (!context) throw new Error("Canvas drawing is unavailable in this browser.");
+    if (!context)
+      throw new Error("Canvas drawing is unavailable in this browser.");
     this.inkContext = context;
     this.state = {
       grid: { columns: 20, rows: 20 },
@@ -95,10 +114,14 @@ export class PaperCanvas {
     this.inkCanvas.addEventListener("pointercancel", this.handlePointerUp);
     this.inkCanvas.addEventListener("pointerenter", this.handlePointerEnter);
     this.inkCanvas.addEventListener("pointerleave", this.handlePointerLeave);
-    this.inkCanvas.addEventListener("contextmenu", (event) => event.preventDefault());
+    this.inkCanvas.addEventListener("contextmenu", (event) =>
+      event.preventDefault(),
+    );
     this.surface.addEventListener("selectstart", this.preventBrowserSelection);
     this.surface.addEventListener("dragstart", this.preventBrowserSelection);
-    this.viewport.addEventListener("wheel", this.handleWheel, { passive: false });
+    this.viewport.addEventListener("wheel", this.handleWheel, {
+      passive: false,
+    });
     window.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("keyup", this.handleKeyUp);
     window.addEventListener("blur", this.handleWindowBlur);
@@ -109,10 +132,14 @@ export class PaperCanvas {
   }
 
   update(next: Partial<PaperState>): void {
-    const gridChanged = next.grid !== undefined && (
-      next.grid.columns !== this.state.grid.columns || next.grid.rows !== this.state.grid.rows
-    );
-    const paperChanged = gridChanged || next.prompt !== undefined || next.showsGuides !== undefined;
+    const gridChanged =
+      next.grid !== undefined &&
+      (next.grid.columns !== this.state.grid.columns ||
+        next.grid.rows !== this.state.grid.rows);
+    const paperChanged =
+      gridChanged ||
+      next.prompt !== undefined ||
+      next.showsGuides !== undefined;
     const strokesChanged = next.strokes !== undefined;
     this.state = {
       ...this.state,
@@ -152,7 +179,10 @@ export class PaperCanvas {
     this.inkCanvas.removeEventListener("pointercancel", this.handlePointerUp);
     this.inkCanvas.removeEventListener("pointerenter", this.handlePointerEnter);
     this.inkCanvas.removeEventListener("pointerleave", this.handlePointerLeave);
-    this.surface.removeEventListener("selectstart", this.preventBrowserSelection);
+    this.surface.removeEventListener(
+      "selectstart",
+      this.preventBrowserSelection,
+    );
     this.surface.removeEventListener("dragstart", this.preventBrowserSelection);
     this.viewport.removeEventListener("wheel", this.handleWheel);
     window.removeEventListener("keydown", this.handleKeyDown);
@@ -166,7 +196,8 @@ export class PaperCanvas {
     const aspect = this.gridAspectRatio();
     const horizontalInset = GRID_INSET * 2;
     const verticalFixed = GRID_INSET * 2 + HEADER_HEIGHT + HEADER_SPACING;
-    const heightForWidth = verticalFixed + Math.max(availableWidth - horizontalInset, 40) / aspect;
+    const heightForWidth =
+      verticalFixed + Math.max(availableWidth - horizontalInset, 40) / aspect;
 
     if (heightForWidth <= availableHeight) {
       this.cssWidth = availableWidth;
@@ -205,15 +236,22 @@ export class PaperCanvas {
   private pixelRatioForScale(scale: number): number {
     const width = Math.max(this.cssWidth, 1);
     const height = Math.max(this.cssHeight, 1);
-    const dimensionLimit = Math.min(MAX_CANVAS_DIMENSION / width, MAX_CANVAS_DIMENSION / height);
+    const dimensionLimit = Math.min(
+      MAX_CANVAS_DIMENSION / width,
+      MAX_CANVAS_DIMENSION / height,
+    );
     const areaLimit = Math.sqrt(MAX_CANVAS_PIXELS / (width * height));
-    return Math.max(1, Math.min(this.basePixelRatio * scale, dimensionLimit, areaLimit));
+    return Math.max(
+      1,
+      Math.min(this.basePixelRatio * scale, dimensionLimit, areaLimit),
+    );
   }
 
   private commitZoom(): void {
     const nextPixelRatio = this.pixelRatioForScale(this.scale);
     const scaleChanged = Math.abs(this.scale - this.renderedScale) >= 0.001;
-    const pixelRatioChanged = Math.abs(nextPixelRatio - this.pixelRatio) >= 0.01;
+    const pixelRatioChanged =
+      Math.abs(nextPixelRatio - this.pixelRatio) >= 0.01;
     if (!scaleChanged && !pixelRatioChanged) {
       this.applyTransform();
       return;
@@ -244,7 +282,12 @@ export class PaperCanvas {
     context.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
     context.clearRect(0, 0, this.cssWidth, this.cssHeight);
 
-    const gradient = context.createLinearGradient(0, 0, this.cssWidth, this.cssHeight);
+    const gradient = context.createLinearGradient(
+      0,
+      0,
+      this.cssWidth,
+      this.cssHeight,
+    );
     gradient.addColorStop(0, "#fbf7e8");
     gradient.addColorStop(1, "#f8f2df");
     context.fillStyle = gradient;
@@ -263,7 +306,11 @@ export class PaperCanvas {
     context.fillStyle = "rgba(76, 97, 78, 0.8)";
     context.font = "600 11px ui-serif, Georgia, serif";
     context.textBaseline = "middle";
-    context.fillText("原 稿 用 紙", grid.x, grid.y - HEADER_SPACING - HEADER_HEIGHT / 2);
+    context.fillText(
+      "原 稿 用 紙",
+      grid.x,
+      grid.y - HEADER_SPACING - HEADER_HEIGHT / 2,
+    );
     context.font = "500 9px ui-rounded, system-ui, sans-serif";
     context.textAlign = "right";
     context.fillText(
@@ -278,7 +325,12 @@ export class PaperCanvas {
     context.lineWidth = 0.72;
     for (let column = 0; column < this.state.grid.columns; column += 1) {
       const x = layout.x + column * (layout.cell + layout.gap);
-      context.strokeRect(x, layout.y, layout.cell, layout.cell * this.state.grid.rows);
+      context.strokeRect(
+        x,
+        layout.y,
+        layout.cell,
+        layout.cell * this.state.grid.rows,
+      );
       context.beginPath();
       for (let row = 1; row < this.state.grid.rows; row += 1) {
         const y = layout.y + row * layout.cell;
@@ -345,18 +397,22 @@ export class PaperCanvas {
       image.style.top = `${(layout.y + row * layout.cell + inset) * scale}px`;
       image.style.width = `${(layout.cell - inset * 2) * scale}px`;
       image.style.height = `${(layout.cell - inset * 2) * scale}px`;
-      image.addEventListener("error", () => {
-        const fallback = document.createElement("span");
-        fallback.className = "text-guide";
-        fallback.textContent = this.state.prompt.character;
-        fallback.style.left = image.style.left;
-        fallback.style.top = image.style.top;
-        fallback.style.width = image.style.width;
-        fallback.style.height = image.style.height;
-        fallback.style.fontSize = `${layout.cell * 0.58 * scale}px`;
-        fallback.style.opacity = "0.2";
-        image.replaceWith(fallback);
-      }, { once: true });
+      image.addEventListener(
+        "error",
+        () => {
+          const fallback = document.createElement("span");
+          fallback.className = "text-guide";
+          fallback.textContent = this.state.prompt.character;
+          fallback.style.left = image.style.left;
+          fallback.style.top = image.style.top;
+          fallback.style.width = image.style.width;
+          fallback.style.height = image.style.height;
+          fallback.style.fontSize = `${layout.cell * 0.58 * scale}px`;
+          fallback.style.opacity = "0.2";
+          image.replaceWith(fallback);
+        },
+        { once: true },
+      );
       this.guideLayer.append(image);
       try {
         image.src = svgDataUrl(svg);
@@ -380,7 +436,11 @@ export class PaperCanvas {
       return;
     }
     for (let index = 1; index < stroke.points.length; index += 1) {
-      this.renderSegment(stroke, stroke.points[index - 1], stroke.points[index]);
+      this.renderSegment(
+        stroke,
+        stroke.points[index - 1],
+        stroke.points[index],
+      );
     }
   }
 
@@ -390,7 +450,10 @@ export class PaperCanvas {
     const y1 = from.y * this.cssHeight;
     const x2 = to.x * this.cssWidth;
     const y2 = to.y * this.cssHeight;
-    const pressure = (this.normalizedPressure(from.pressure) + this.normalizedPressure(to.pressure)) / 2;
+    const pressure =
+      (this.normalizedPressure(from.pressure) +
+        this.normalizedPressure(to.pressure)) /
+      2;
     context.save();
     context.lineCap = "round";
     context.lineJoin = "round";
@@ -409,11 +472,20 @@ export class PaperCanvas {
       const ny = dx / length;
       context.globalCompositeOperation = "source-over";
       context.strokeStyle = "#575147";
-      context.lineWidth = Math.max(0.55, stroke.width * (0.42 + pressure * 0.52));
+      context.lineWidth = Math.max(
+        0.55,
+        stroke.width * (0.42 + pressure * 0.52),
+      );
       for (let layer = -1; layer <= 1; layer += 1) {
         const jitter = layer * stroke.width * 0.14;
         context.globalAlpha = 0.13 + pressure * 0.11;
-        this.strokeLine(context, x1 + nx * jitter, y1 + ny * jitter, x2 + nx * jitter, y2 + ny * jitter);
+        this.strokeLine(
+          context,
+          x1 + nx * jitter,
+          y1 + ny * jitter,
+          x2 + nx * jitter,
+          y2 + ny * jitter,
+        );
       }
     } else {
       const angle = Math.atan2(y2 - y1, x2 - x1);
@@ -421,7 +493,10 @@ export class PaperCanvas {
       context.globalCompositeOperation = "source-over";
       context.globalAlpha = 0.94;
       context.strokeStyle = "#1f1c17";
-      context.lineWidth = Math.max(0.7, stroke.width * (0.38 + pressure * 0.86) * nibFactor);
+      context.lineWidth = Math.max(
+        0.7,
+        stroke.width * (0.38 + pressure * 0.86) * nibFactor,
+      );
       this.strokeLine(context, x1, y1, x2, y2);
     }
     context.restore();
@@ -466,7 +541,10 @@ export class PaperCanvas {
   private handlePointerDown = (event: PointerEvent): void => {
     event.preventDefault();
     this.inkCanvas.setPointerCapture(event.pointerId);
-    if (event.pointerType === "mouse" && (event.button === 1 || (event.button === 0 && this.spacePressed))) {
+    if (
+      event.pointerType === "mouse" &&
+      (event.button === 1 || (event.button === 0 && this.spacePressed))
+    ) {
       this.panStart = {
         pointerId: event.pointerId,
         x: event.clientX,
@@ -524,7 +602,10 @@ export class PaperCanvas {
     }
     if (event.pointerId !== this.activeStrokePointer) return;
 
-    const events = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : [event];
+    const events =
+      typeof event.getCoalescedEvents === "function"
+        ? event.getCoalescedEvents()
+        : [event];
     if (this.state.tool === "eraser") {
       for (const sample of events.length > 0 ? events : [event]) {
         const next = this.pointFromEvent(sample);
@@ -538,7 +619,11 @@ export class PaperCanvas {
     for (const sample of events.length > 0 ? events : [event]) {
       const next = this.pointFromEvent(sample);
       const previous = this.activeStroke.points.at(-1);
-      if (!previous || Math.hypot(next.x - previous.x, next.y - previous.y) < 0.00015) continue;
+      if (
+        !previous ||
+        Math.hypot(next.x - previous.x, next.y - previous.y) < 0.00015
+      )
+        continue;
       this.activeStroke.points.push(next);
       this.renderSegment(this.activeStroke, previous, next);
     }
@@ -568,7 +653,11 @@ export class PaperCanvas {
   private finishStroke(): void {
     if (this.eraserChanged) {
       this.onChange(structuredClone(this.state.strokes));
-    } else if (this.activeStroke && this.activeStroke.tool !== "eraser" && this.activeStroke.points.length > 0) {
+    } else if (
+      this.activeStroke &&
+      this.activeStroke.tool !== "eraser" &&
+      this.activeStroke.points.length > 0
+    ) {
       this.onChange(structuredClone(this.state.strokes));
     }
     this.activeStroke = undefined;
@@ -580,11 +669,14 @@ export class PaperCanvas {
   }
 
   private cancelTouchStroke(): void {
-    if (!this.activeStrokeWasTouch || this.activeStrokePointer === undefined) return;
+    if (!this.activeStrokeWasTouch || this.activeStrokePointer === undefined)
+      return;
     if (this.strokesBeforeErase) {
       this.state.strokes = this.strokesBeforeErase;
     } else if (this.activeStroke) {
-      this.state.strokes = this.state.strokes.filter((stroke) => stroke.id !== this.activeStroke?.id);
+      this.state.strokes = this.state.strokes.filter(
+        (stroke) => stroke.id !== this.activeStroke?.id,
+      );
     }
     this.activeStroke = undefined;
     this.activeStrokePointer = undefined;
@@ -596,11 +688,13 @@ export class PaperCanvas {
   }
 
   private eraseStrokesBetween(from: InkPoint, to: InkPoint): void {
-    const eraserRadius = this.state.width * ERASER_WIDTH_MULTIPLIER / 2;
+    const eraserRadius = (this.state.width * ERASER_WIDTH_MULTIPLIER) / 2;
     const beforeCount = this.state.strokes.length;
-    this.state.strokes = this.state.strokes.filter((stroke) => (
-      stroke.tool === "eraser" || !this.strokeIntersectsEraser(stroke, from, to, eraserRadius)
-    ));
+    this.state.strokes = this.state.strokes.filter(
+      (stroke) =>
+        stroke.tool === "eraser" ||
+        !this.strokeIntersectsEraser(stroke, from, to, eraserRadius),
+    );
     if (this.state.strokes.length !== beforeCount) {
       this.eraserChanged = true;
       this.redrawInk();
@@ -618,12 +712,19 @@ export class PaperCanvas {
     const to = this.canvasPoint(eraserTo);
     const hitDistance = eraserRadius + stroke.width;
     if (stroke.points.length === 1) {
-      return this.pointToSegmentDistance(this.canvasPoint(stroke.points[0]), from, to) <= hitDistance;
+      return (
+        this.pointToSegmentDistance(
+          this.canvasPoint(stroke.points[0]),
+          from,
+          to,
+        ) <= hitDistance
+      );
     }
     for (let index = 1; index < stroke.points.length; index += 1) {
       const strokeFrom = this.canvasPoint(stroke.points[index - 1]);
       const strokeTo = this.canvasPoint(stroke.points[index]);
-      if (this.segmentDistance(from, to, strokeFrom, strokeTo) <= hitDistance) return true;
+      if (this.segmentDistance(from, to, strokeFrom, strokeTo) <= hitDistance)
+        return true;
     }
     return false;
   }
@@ -632,7 +733,12 @@ export class PaperCanvas {
     return { x: point.x * this.cssWidth, y: point.y * this.cssHeight };
   }
 
-  private segmentDistance(a: TouchLocation, b: TouchLocation, c: TouchLocation, d: TouchLocation): number {
+  private segmentDistance(
+    a: TouchLocation,
+    b: TouchLocation,
+    c: TouchLocation,
+    d: TouchLocation,
+  ): number {
     if (a.x === b.x && a.y === b.y) return this.pointToSegmentDistance(a, c, d);
     if (c.x === d.x && c.y === d.y) return this.pointToSegmentDistance(c, a, b);
     if (this.segmentsIntersect(a, b, c, d)) return 0;
@@ -644,33 +750,59 @@ export class PaperCanvas {
     );
   }
 
-  private pointToSegmentDistance(point: TouchLocation, from: TouchLocation, to: TouchLocation): number {
+  private pointToSegmentDistance(
+    point: TouchLocation,
+    from: TouchLocation,
+    to: TouchLocation,
+  ): number {
     const dx = to.x - from.x;
     const dy = to.y - from.y;
-    if (dx === 0 && dy === 0) return Math.hypot(point.x - from.x, point.y - from.y);
-    const projection = Math.min(Math.max(
-      ((point.x - from.x) * dx + (point.y - from.y) * dy) / (dx * dx + dy * dy),
-      0,
-    ), 1);
-    return Math.hypot(point.x - (from.x + projection * dx), point.y - (from.y + projection * dy));
+    if (dx === 0 && dy === 0)
+      return Math.hypot(point.x - from.x, point.y - from.y);
+    const projection = Math.min(
+      Math.max(
+        ((point.x - from.x) * dx + (point.y - from.y) * dy) /
+          (dx * dx + dy * dy),
+        0,
+      ),
+      1,
+    );
+    return Math.hypot(
+      point.x - (from.x + projection * dx),
+      point.y - (from.y + projection * dy),
+    );
   }
 
-  private segmentsIntersect(a: TouchLocation, b: TouchLocation, c: TouchLocation, d: TouchLocation): boolean {
+  private segmentsIntersect(
+    a: TouchLocation,
+    b: TouchLocation,
+    c: TouchLocation,
+    d: TouchLocation,
+  ): boolean {
     const cross = (p: TouchLocation, q: TouchLocation, r: TouchLocation) =>
       (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
-    const orientation = (value: number) => Math.abs(value) < 0.000001 ? 0 : Math.sign(value);
-    const onSegment = (point: TouchLocation, from: TouchLocation, to: TouchLocation) =>
-      point.x >= Math.min(from.x, to.x) && point.x <= Math.max(from.x, to.x) &&
-      point.y >= Math.min(from.y, to.y) && point.y <= Math.max(from.y, to.y);
+    const orientation = (value: number) =>
+      Math.abs(value) < 0.000001 ? 0 : Math.sign(value);
+    const onSegment = (
+      point: TouchLocation,
+      from: TouchLocation,
+      to: TouchLocation,
+    ) =>
+      point.x >= Math.min(from.x, to.x) &&
+      point.x <= Math.max(from.x, to.x) &&
+      point.y >= Math.min(from.y, to.y) &&
+      point.y <= Math.max(from.y, to.y);
     const abC = orientation(cross(a, b, c));
     const abD = orientation(cross(a, b, d));
     const cdA = orientation(cross(c, d, a));
     const cdB = orientation(cross(c, d, b));
     if (abC !== abD && cdA !== cdB) return true;
-    return (abC === 0 && onSegment(c, a, b)) ||
+    return (
+      (abC === 0 && onSegment(c, a, b)) ||
       (abD === 0 && onSegment(d, a, b)) ||
       (cdA === 0 && onSegment(a, c, d)) ||
-      (cdB === 0 && onSegment(b, c, d));
+      (cdB === 0 && onSegment(b, c, d))
+    );
   }
 
   private pointFromEvent(event: PointerEvent): InkPoint {
@@ -703,11 +835,22 @@ export class PaperCanvas {
   private updateGesture(): void {
     if (!this.gestureStart) return;
     const [first, second] = [...this.touches.values()];
-    const distance = Math.max(Math.hypot(second.x - first.x, second.y - first.y), 1);
+    const distance = Math.max(
+      Math.hypot(second.x - first.x, second.y - first.y),
+      1,
+    );
     const center = { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
-    this.scale = Math.min(Math.max(this.gestureStart.scale * distance / this.gestureStart.distance, 1), 3);
-    this.offsetX = this.gestureStart.offsetX + center.x - this.gestureStart.center.x;
-    this.offsetY = this.gestureStart.offsetY + center.y - this.gestureStart.center.y;
+    this.scale = Math.min(
+      Math.max(
+        (this.gestureStart.scale * distance) / this.gestureStart.distance,
+        1,
+      ),
+      3,
+    );
+    this.offsetX =
+      this.gestureStart.offsetX + center.x - this.gestureStart.center.x;
+    this.offsetY =
+      this.gestureStart.offsetY + center.y - this.gestureStart.center.y;
     this.clampOffset();
     this.applyTransform();
   }
@@ -715,7 +858,10 @@ export class PaperCanvas {
   private handleWheel = (event: WheelEvent): void => {
     if (event.ctrlKey || event.metaKey) {
       event.preventDefault();
-      this.scale = Math.min(Math.max(this.scale * Math.exp(-event.deltaY * 0.004), 1), 3);
+      this.scale = Math.min(
+        Math.max(this.scale * Math.exp(-event.deltaY * 0.004), 1),
+        3,
+      );
       this.clampOffset();
       this.applyTransform();
       this.scheduleZoomRerasterization();
@@ -723,9 +869,10 @@ export class PaperCanvas {
     }
     if (this.scale <= 1) return;
     event.preventDefault();
-    const horizontalDelta = event.shiftKey && Math.abs(event.deltaX) < Math.abs(event.deltaY)
-      ? event.deltaY
-      : event.deltaX;
+    const horizontalDelta =
+      event.shiftKey && Math.abs(event.deltaX) < Math.abs(event.deltaY)
+        ? event.deltaY
+        : event.deltaX;
     this.offsetX -= horizontalDelta;
     if (!event.shiftKey) this.offsetY -= event.deltaY;
     this.clampOffset();
@@ -746,7 +893,12 @@ export class PaperCanvas {
   };
 
   private handleKeyDown = (event: KeyboardEvent): void => {
-    if (event.code !== "Space" || !this.pointerInside || this.isTextEntry(event.target)) return;
+    if (
+      event.code !== "Space" ||
+      !this.pointerInside ||
+      this.isTextEntry(event.target)
+    )
+      return;
     event.preventDefault();
     this.setSpacePressed(true);
   };
@@ -771,9 +923,11 @@ export class PaperCanvas {
   }
 
   private isTextEntry(target: EventTarget | null): boolean {
-    return target instanceof HTMLInputElement
-      || target instanceof HTMLTextAreaElement
-      || (target instanceof HTMLElement && target.isContentEditable);
+    return (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      (target instanceof HTMLElement && target.isContentEditable)
+    );
   }
 
   private applyTransform(): void {
@@ -782,16 +936,30 @@ export class PaperCanvas {
   }
 
   private clampOffset(): void {
-    const horizontalLimit = Math.max((this.cssWidth * this.scale - this.viewport.clientWidth) / 2, 0);
-    const verticalLimit = Math.max((this.cssHeight * this.scale - this.viewport.clientHeight) / 2, 0);
-    this.offsetX = Math.min(Math.max(this.offsetX, -horizontalLimit), horizontalLimit);
-    this.offsetY = Math.min(Math.max(this.offsetY, -verticalLimit), verticalLimit);
+    const horizontalLimit = Math.max(
+      (this.cssWidth * this.scale - this.viewport.clientWidth) / 2,
+      0,
+    );
+    const verticalLimit = Math.max(
+      (this.cssHeight * this.scale - this.viewport.clientHeight) / 2,
+      0,
+    );
+    this.offsetX = Math.min(
+      Math.max(this.offsetX, -horizontalLimit),
+      horizontalLimit,
+    );
+    this.offsetY = Math.min(
+      Math.max(this.offsetY, -verticalLimit),
+      verticalLimit,
+    );
   }
 
   private gridAspectRatio(): number {
     return (
-      this.state.grid.columns + Math.max(this.state.grid.columns - 1, 0) * COLUMN_GAP_RATIO
-    ) / this.state.grid.rows;
+      (this.state.grid.columns +
+        Math.max(this.state.grid.columns - 1, 0) * COLUMN_GAP_RATIO) /
+      this.state.grid.rows
+    );
   }
 
   private gridRect(): { x: number; y: number; width: number; height: number } {
@@ -806,10 +974,17 @@ export class PaperCanvas {
 
   private cellLayout(): { x: number; y: number; cell: number; gap: number } {
     const rect = this.gridRect();
-    const widthUnits = this.state.grid.columns + Math.max(this.state.grid.columns - 1, 0) * COLUMN_GAP_RATIO;
-    const cell = Math.min(rect.width / widthUnits, rect.height / this.state.grid.rows);
+    const widthUnits =
+      this.state.grid.columns +
+      Math.max(this.state.grid.columns - 1, 0) * COLUMN_GAP_RATIO;
+    const cell = Math.min(
+      rect.width / widthUnits,
+      rect.height / this.state.grid.rows,
+    );
     const gap = cell * COLUMN_GAP_RATIO;
-    const gridWidth = this.state.grid.columns * cell + Math.max(this.state.grid.columns - 1, 0) * gap;
+    const gridWidth =
+      this.state.grid.columns * cell +
+      Math.max(this.state.grid.columns - 1, 0) * gap;
     const gridHeight = this.state.grid.rows * cell;
     return {
       x: rect.x + (rect.width - gridWidth) / 2,

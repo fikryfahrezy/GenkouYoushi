@@ -47,7 +47,9 @@ export interface KanjiCandidate {
 export const STANDARD_GRID: ManuscriptGrid = { columns: 20, rows: 20 };
 export const COMPACT_GRID: ManuscriptGrid = { columns: 10, rows: 20 };
 
-export function createPracticeDocument(grid: ManuscriptGrid = STANDARD_GRID): PracticeDocument {
+export function createPracticeDocument(
+  grid: ManuscriptGrid = STANDARD_GRID,
+): PracticeDocument {
   const now = new Date().toISOString();
   return {
     id: createID(),
