@@ -72,35 +72,34 @@ final class PracticeWorkspaceModel {
         guard !isLoadingKanji else { return }
         isLoadingKanji = true
         errorMessage = nil
+        defer { isLoadingKanji = false }
 
         do {
-            let reference = try await kanjiService.lookup(
-                character: kanjiQuery,
-                includesNumbers: false
-            )
-            prompt.character = reference.character
-            prompt.strokeOrderSVGs = reference.strokeOrderSVGs
-            kanjiQuery = reference.character
-            statusMessage = "Reference updated"
-            scheduleSave()
+            try await updateKanjiReference(character: kanjiQuery)
         } catch {
             errorMessage = error.localizedDescription
         }
-
-        isLoadingKanji = false
     }
 
-    func recognizeKanji(imageData: Data) async {
-        guard !isRecognizingKanji else { return }
-        isRecognizingKanji = true
-        errorMessage = nil
-        do {
-            kanjiQuery = try await recognizer.recognize(imageData: imageData)
-            await lookupKanji()
-        } catch {
-            errorMessage = error.localizedDescription
+    func recognizeKanjiCandidates(
+        imageData: Data,
+        crop: CGRect
+    ) async throws -> [KanjiRecognitionCandidate] {
+        guard !isRecognizingKanji else {
+            throw KanjiRecognitionError.recognitionInProgress
         }
-        isRecognizingKanji = false
+        isRecognizingKanji = true
+        defer { isRecognizingKanji = false }
+        return try await recognizer.recognize(imageData: imageData, crop: crop)
+    }
+
+    func applyRecognizedKanji(_ character: String) async throws {
+        guard !isLoadingKanji else {
+            throw KanjiRecognitionError.lookupInProgress
+        }
+        isLoadingKanji = true
+        defer { isLoadingKanji = false }
+        try await updateKanjiReference(character: character)
     }
 
     func drawingDidChange(data: Data, canvasSize: CGSize) {
@@ -184,6 +183,19 @@ final class PracticeWorkspaceModel {
     var exportFilename: String {
         let value = prompt.character.isEmpty ? "practice" : prompt.character
         return "\(value)-genkou-youshi"
+    }
+
+    private func updateKanjiReference(character: String) async throws {
+        let reference = try await kanjiService.lookup(
+            character: character,
+            includesNumbers: false
+        )
+        prompt.character = reference.character
+        prompt.strokeOrderSVGs = reference.strokeOrderSVGs
+        kanjiQuery = reference.character
+        errorMessage = nil
+        statusMessage = "Reference updated"
+        scheduleSave()
     }
 
     private func scheduleSave() {

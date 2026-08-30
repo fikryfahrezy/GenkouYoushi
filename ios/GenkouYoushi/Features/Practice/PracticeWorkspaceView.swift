@@ -7,6 +7,7 @@ struct PracticeWorkspaceView: View {
     @State private var exportDocument: PDFExportDocument?
     @State private var isExporting = false
     @State private var selectedPhoto: PhotosPickerItem?
+    @State private var recognitionPhoto: RecognitionPhoto?
     @State private var isReferencePanelPresented = false
     @State private var isCreatingSheet = false
     @FocusState private var isKanjiFieldFocused: Bool
@@ -75,6 +76,17 @@ struct PracticeWorkspaceView: View {
             if case .failure(let error) = result {
                 model.errorMessage = error.localizedDescription
             }
+        }
+        .sheet(item: $recognitionPhoto) { photo in
+            PhotoRecognitionSheet(
+                photo: photo,
+                recognize: { data, crop in
+                    try await model.recognizeKanjiCandidates(imageData: data, crop: crop)
+                },
+                apply: { character in
+                    try await model.applyRecognizedKanji(character)
+                }
+            )
         }
     }
 
@@ -319,7 +331,6 @@ struct PracticeWorkspaceView: View {
     }
 
     private var referencePanel: some View {
-        let isRecognizing = model.isRecognizingKanji
         let accentColor = PaperPalette.indigo
 
         return VStack(spacing: 12) {
@@ -387,7 +398,7 @@ struct PracticeWorkspaceView: View {
 
                     PhotosPicker(selection: $selectedPhoto, matching: .images) {
                         Label(
-                            isRecognizing ? "Reading image…" : "Recognize from photo",
+                            "Recognize from photo",
                             systemImage: "viewfinder"
                         )
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
@@ -395,14 +406,21 @@ struct PracticeWorkspaceView: View {
                         .frame(maxWidth: .infinity, minHeight: 34)
                         .overlay { Rectangle().stroke(accentColor.opacity(0.28), lineWidth: 1) }
                     }
-                    .disabled(isRecognizing)
                     .onChange(of: selectedPhoto) { _, item in
                         guard let item else { return }
                         Task {
-                            if let data = try? await item.loadTransferable(type: Data.self) {
-                                await model.recognizeKanji(imageData: data)
+                            defer { selectedPhoto = nil }
+                            do {
+                                guard
+                                    let data = try await item.loadTransferable(type: Data.self),
+                                    let photo = RecognitionPhoto(data: data)
+                                else {
+                                    throw KanjiRecognitionError.invalidImage
+                                }
+                                recognitionPhoto = photo
+                            } catch {
+                                model.errorMessage = error.localizedDescription
                             }
-                            selectedPhoto = nil
                         }
                     }
 
