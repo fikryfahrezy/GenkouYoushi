@@ -27,7 +27,12 @@ import {
   X,
 } from "lucide-solid";
 import "./styles.css";
-import { lookupKanji, prepareImageForOcr, recognizeKanji } from "./api";
+import {
+  lookupKanji,
+  prepareImageForOcr,
+  recognizeKanji,
+  type ImageCrop,
+} from "./api";
 import { deleteDocument, loadDocuments, saveDocument } from "./db";
 import { PaperCanvas } from "./ink-canvas";
 import { recognizeKanjiLocally } from "./kanji-recognizer";
@@ -42,6 +47,14 @@ import {
 } from "./models";
 
 type Section = "practice" | "library";
+type CropMode = "move" | "northwest" | "northeast" | "southwest" | "southeast";
+
+const DEFAULT_PHOTO_CROP: ImageCrop = {
+  x: 0.2,
+  y: 0.2,
+  width: 0.6,
+  height: 0.6,
+};
 
 function App() {
   const [loading, setLoading] = createSignal(true);
@@ -59,6 +72,10 @@ function App() {
   const [ocrCandidates, setOcrCandidates] = createSignal<KanjiCandidate[]>([]);
   const [photoFile, setPhotoFile] = createSignal<File>();
   const [photoPreview, setPhotoPreview] = createSignal("");
+  const [photoAspectRatio, setPhotoAspectRatio] = createSignal(1);
+  const [photoCrop, setPhotoCrop] = createSignal<ImageCrop>({
+    ...DEFAULT_PHOTO_CROP,
+  });
   const [referenceOpen, setReferenceOpen] = createSignal(false);
   const [newSheetPickerOpen, setNewSheetPickerOpen] = createSignal(false);
   const [lookingUp, setLookingUp] = createSignal(false);
@@ -73,10 +90,19 @@ function App() {
   let kanjiInput!: HTMLInputElement;
   let photoInput!: HTMLInputElement;
   let replacementPhotoInput!: HTMLInputElement;
+  let photoCropStage!: HTMLDivElement;
   let photoDialog!: HTMLDialogElement;
   let installDialog!: HTMLDialogElement;
   let saveTimer: number | undefined;
   let photoPreviewObjectUrl = "";
+  let cropInteraction:
+    | {
+        mode: CropMode;
+        pointerX: number;
+        pointerY: number;
+        crop: ImageCrop;
+      }
+    | undefined;
 
   const active = createMemo(() =>
     documents().find((document) => document.id === activeDocumentId()),
@@ -228,7 +254,7 @@ function App() {
     setOcrError("");
     setOcrCandidates([]);
     try {
-      const image = await prepareImageForOcr(file);
+      const image = await prepareImageForOcr(file, photoCrop());
       let candidates: KanjiCandidate[];
       let localFailure: unknown;
       try {
@@ -260,6 +286,8 @@ function App() {
     photoPreviewObjectUrl = URL.createObjectURL(file);
     setPhotoFile(file);
     setPhotoPreview(photoPreviewObjectUrl);
+    setPhotoAspectRatio(1);
+    setPhotoCrop({ ...DEFAULT_PHOTO_CROP });
     setOcrCandidates([]);
     setOcrError("");
     if (!photoDialog.open) photoDialog.showModal();
@@ -270,6 +298,8 @@ function App() {
     photoPreviewObjectUrl = "";
     setPhotoPreview("");
     setPhotoFile(undefined);
+    setPhotoAspectRatio(1);
+    setPhotoCrop({ ...DEFAULT_PHOTO_CROP });
     setOcrCandidates([]);
     setOcrError("");
   }
@@ -278,6 +308,80 @@ function App() {
     kanjiInput.value = candidate.character;
     const applied = await performLookup(true, "photo");
     if (applied) photoDialog.close();
+  }
+
+  function clamp(value: number, minimum: number, maximum: number): number {
+    return Math.min(Math.max(value, minimum), maximum);
+  }
+
+  function startCropInteraction(event: PointerEvent, mode: CropMode): void {
+    if (recognizing()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    cropInteraction = {
+      mode,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      crop: { ...photoCrop() },
+    };
+    window.addEventListener("pointermove", moveCropInteraction);
+    window.addEventListener("pointerup", endCropInteraction, { once: true });
+    window.addEventListener("pointercancel", endCropInteraction, {
+      once: true,
+    });
+  }
+
+  function moveCropInteraction(event: PointerEvent): void {
+    const interaction = cropInteraction;
+    if (!interaction) return;
+    event.preventDefault();
+    const bounds = photoCropStage.getBoundingClientRect();
+    if (bounds.width === 0 || bounds.height === 0) return;
+
+    const deltaX = (event.clientX - interaction.pointerX) / bounds.width;
+    const deltaY = (event.clientY - interaction.pointerY) / bounds.height;
+    const initial = interaction.crop;
+    const minimumSize = 0.12;
+
+    if (interaction.mode === "move") {
+      setPhotoCrop({
+        ...initial,
+        x: clamp(initial.x + deltaX, 0, 1 - initial.width),
+        y: clamp(initial.y + deltaY, 0, 1 - initial.height),
+      });
+      return;
+    }
+
+    let left = initial.x;
+    let top = initial.y;
+    let right = initial.x + initial.width;
+    let bottom = initial.y + initial.height;
+
+    if (interaction.mode === "northwest" || interaction.mode === "southwest") {
+      left = clamp(initial.x + deltaX, 0, right - minimumSize);
+    } else {
+      right = clamp(initial.x + initial.width + deltaX, left + minimumSize, 1);
+    }
+
+    if (interaction.mode === "northwest" || interaction.mode === "northeast") {
+      top = clamp(initial.y + deltaY, 0, bottom - minimumSize);
+    } else {
+      bottom = clamp(initial.y + initial.height + deltaY, top + minimumSize, 1);
+    }
+
+    setPhotoCrop({
+      x: left,
+      y: top,
+      width: right - left,
+      height: bottom - top,
+    });
+  }
+
+  function endCropInteraction(): void {
+    cropInteraction = undefined;
+    window.removeEventListener("pointermove", moveCropInteraction);
+    window.removeEventListener("pointerup", endCropInteraction);
+    window.removeEventListener("pointercancel", endCropInteraction);
   }
 
   async function createDocument(grid: ManuscriptGrid): Promise<void> {
@@ -413,6 +517,7 @@ function App() {
   onCleanup(() => {
     if (saveTimer !== undefined) window.clearTimeout(saveTimer);
     if (photoPreviewObjectUrl) URL.revokeObjectURL(photoPreviewObjectUrl);
+    endCropInteraction();
     paperCanvas()?.destroy();
   });
 
@@ -826,7 +931,87 @@ function App() {
 
         <div class="photo-preview">
           <Show when={photoPreview()}>
-            {(source) => <img src={source()} alt="Selected kanji photo" />}
+            {(source) => (
+              <div
+                ref={photoCropStage}
+                class="photo-crop-stage"
+                style={{
+                  "aspect-ratio": `${photoAspectRatio()}`,
+                  width: `min(100%, ${390 * photoAspectRatio()}px)`,
+                }}
+              >
+                <img
+                  src={source()}
+                  alt="Selected kanji photo"
+                  draggable={false}
+                  onLoad={(event) => {
+                    const image = event.currentTarget;
+                    if (image.naturalHeight > 0)
+                      setPhotoAspectRatio(
+                        image.naturalWidth / image.naturalHeight,
+                      );
+                  }}
+                />
+                <div
+                  class="photo-crop-selection"
+                  style={{
+                    left: `${photoCrop().x * 100}%`,
+                    top: `${photoCrop().y * 100}%`,
+                    width: `${photoCrop().width * 100}%`,
+                    height: `${photoCrop().height * 100}%`,
+                  }}
+                  onPointerDown={(event) => startCropInteraction(event, "move")}
+                  role="group"
+                  aria-label="Selected scan area. Drag to move and use the corner handles to resize."
+                >
+                  <span class="photo-crop-corner top-left" aria-hidden="true" />
+                  <span
+                    class="photo-crop-corner top-right"
+                    aria-hidden="true"
+                  />
+                  <span
+                    class="photo-crop-corner bottom-left"
+                    aria-hidden="true"
+                  />
+                  <span
+                    class="photo-crop-corner bottom-right"
+                    aria-hidden="true"
+                  />
+                  <button
+                    class="photo-crop-handle northwest"
+                    onPointerDown={(event) =>
+                      startCropInteraction(event, "northwest")
+                    }
+                    type="button"
+                    aria-label="Resize scan area from top left"
+                  />
+                  <button
+                    class="photo-crop-handle northeast"
+                    onPointerDown={(event) =>
+                      startCropInteraction(event, "northeast")
+                    }
+                    type="button"
+                    aria-label="Resize scan area from top right"
+                  />
+                  <button
+                    class="photo-crop-handle southwest"
+                    onPointerDown={(event) =>
+                      startCropInteraction(event, "southwest")
+                    }
+                    type="button"
+                    aria-label="Resize scan area from bottom left"
+                  />
+                  <button
+                    class="photo-crop-handle southeast"
+                    onPointerDown={(event) =>
+                      startCropInteraction(event, "southeast")
+                    }
+                    type="button"
+                    aria-label="Resize scan area from bottom right"
+                  />
+                </div>
+              </div>
+            )}
           </Show>
           <Show when={recognizing()}>
             <div class="photo-scan-status" role="status">
@@ -836,6 +1021,19 @@ function App() {
             </div>
           </Show>
         </div>
+
+        <Show when={ocrCandidates().length === 0}>
+          <div class="photo-crop-help">
+            <span>Drag the box to move it. Use the corners to resize.</span>
+            <button
+              onClick={() => setPhotoCrop({ ...DEFAULT_PHOTO_CROP })}
+              disabled={recognizing()}
+              type="button"
+            >
+              Reset area
+            </button>
+          </div>
+        </Show>
 
         <Show
           when={ocrCandidates().length > 0}

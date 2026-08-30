@@ -18,6 +18,13 @@ interface OcrResponse {
 
 export type OcrProvider = "tesseract" | "google";
 
+export interface ImageCrop {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 function decodeBase64Utf8(value: string): string {
   const bytes = Uint8Array.from(atob(value), (character) =>
     character.charCodeAt(0),
@@ -107,17 +114,27 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-export async function prepareImageForOcr(file: File): Promise<Blob> {
+export async function prepareImageForOcr(
+  file: File,
+  crop: ImageCrop = { x: 0, y: 0, width: 1, height: 1 },
+): Promise<Blob> {
   const bitmap = await createImageBitmap(file, {
     imageOrientation: "from-image",
   });
   const maximumEdge = 1_280;
-  const scale = Math.min(
-    maximumEdge / Math.max(bitmap.width, bitmap.height),
+  const sourceX = Math.round(bitmap.width * crop.x);
+  const sourceY = Math.round(bitmap.height * crop.y);
+  const sourceWidth = Math.max(
     1,
+    Math.min(bitmap.width - sourceX, Math.round(bitmap.width * crop.width)),
   );
-  const width = Math.max(1, Math.round(bitmap.width * scale));
-  const height = Math.max(1, Math.round(bitmap.height * scale));
+  const sourceHeight = Math.max(
+    1,
+    Math.min(bitmap.height - sourceY, Math.round(bitmap.height * crop.height)),
+  );
+  const scale = Math.min(maximumEdge / Math.max(sourceWidth, sourceHeight), 1);
+  const width = Math.max(1, Math.round(sourceWidth * scale));
+  const height = Math.max(1, Math.round(sourceHeight * scale));
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -125,7 +142,17 @@ export async function prepareImageForOcr(file: File): Promise<Blob> {
   if (!context) throw new Error("Image processing is unavailable.");
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, width, height);
-  context.drawImage(bitmap, 0, 0, width, height);
+  context.drawImage(
+    bitmap,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    width,
+    height,
+  );
   bitmap.close();
 
   return await new Promise((resolve, reject) => {

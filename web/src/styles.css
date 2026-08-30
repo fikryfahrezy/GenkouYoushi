@@ -923,15 +923,159 @@ button:disabled {
     var(--canvas);
 }
 
-.photo-preview img {
+.photo-crop-stage {
+  position: relative;
+  max-height: 390px;
+  overflow: hidden;
+  background: var(--paper);
+  line-height: 0;
+  touch-action: none;
+  user-select: none;
+}
+
+.photo-crop-stage img {
   display: block;
   width: 100%;
-  max-height: 390px;
-  object-fit: contain;
+  height: 100%;
+  pointer-events: none;
+}
+
+.photo-crop-selection {
+  position: absolute;
+  z-index: 2;
+  border: 2px solid var(--paper);
+  box-shadow:
+    0 0 0 1px var(--vermilion),
+    0 0 0 9999px rgba(31, 28, 23, 0.56);
+  cursor: move;
+  line-height: normal;
+  touch-action: none;
+}
+
+.photo-crop-selection::before,
+.photo-crop-selection::after {
+  position: absolute;
+  content: "";
+  pointer-events: none;
+}
+
+.photo-crop-selection::before {
+  top: 33.333%;
+  right: 0;
+  bottom: 33.333%;
+  left: 0;
+  border-top: 1px solid rgba(251, 247, 232, 0.55);
+  border-bottom: 1px solid rgba(251, 247, 232, 0.55);
+}
+
+.photo-crop-selection::after {
+  top: 0;
+  right: 33.333%;
+  bottom: 0;
+  left: 33.333%;
+  border-right: 1px solid rgba(251, 247, 232, 0.55);
+  border-left: 1px solid rgba(251, 247, 232, 0.55);
+}
+
+.photo-crop-corner {
+  position: absolute;
+  z-index: 2;
+  width: 17px;
+  height: 17px;
+  border-color: var(--vermilion);
+  pointer-events: none;
+}
+
+.photo-crop-corner.top-left {
+  top: -3px;
+  left: -3px;
+  border-top: 3px solid;
+  border-left: 3px solid;
+}
+
+.photo-crop-corner.top-right {
+  top: -3px;
+  right: -3px;
+  border-top: 3px solid;
+  border-right: 3px solid;
+}
+
+.photo-crop-corner.bottom-left {
+  bottom: -3px;
+  left: -3px;
+  border-bottom: 3px solid;
+  border-left: 3px solid;
+}
+
+.photo-crop-corner.bottom-right {
+  right: -3px;
+  bottom: -3px;
+  border-right: 3px solid;
+  border-bottom: 3px solid;
+}
+
+.photo-crop-handle {
+  position: absolute;
+  z-index: 3;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  touch-action: none;
+}
+
+.photo-crop-handle.northwest {
+  top: -22px;
+  left: -22px;
+  cursor: nwse-resize;
+}
+
+.photo-crop-handle.northeast {
+  top: -22px;
+  right: -22px;
+  cursor: nesw-resize;
+}
+
+.photo-crop-handle.southwest {
+  bottom: -22px;
+  left: -22px;
+  cursor: nesw-resize;
+}
+
+.photo-crop-handle.southeast {
+  right: -22px;
+  bottom: -22px;
+  cursor: nwse-resize;
+}
+
+.photo-crop-help {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 9px;
+  color: var(--faint-sumi);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.photo-crop-help button {
+  flex: 0 0 auto;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--indigo);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .photo-scan-status {
   position: absolute;
+  z-index: 4;
   inset: 0;
   display: flex;
   flex-direction: column;
@@ -1273,6 +1417,10 @@ button:disabled {
 
   .photo-preview {
     min-height: 210px;
+  }
+
+  .photo-crop-stage {
+    max-height: 330px;
   }
 
   .photo-candidates {
