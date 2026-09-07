@@ -56,7 +56,15 @@ const DEFAULT_PHOTO_CROP: ImageCrop = {
   height: 0.6,
 };
 
+function isIPadDevice(): boolean {
+  return (
+    /iPad/.test(navigator.userAgent) ||
+    (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
+  );
+}
+
 function App() {
+  const showsPencilNotice = isIPadDevice();
   const [loading, setLoading] = createSignal(true);
   const [documents, setDocuments] = createSignal<PracticeDocument[]>([]);
   const [activeDocumentId, setActiveDocumentId] = createSignal("");
@@ -823,6 +831,17 @@ function App() {
                 </strong>
               </div>
             </div>
+
+            <Show when={showsPencilNotice}>
+              <div class="reference-card pencil-notice" role="note">
+                <p class="card-title">APPLE PENCIL</p>
+                <strong>Current iPadOS limitation</strong>
+                <p>
+                  For now, turn off Scribble in Settings → Apple Pencil for
+                  reliable rapid strokes.
+                </p>
+              </div>
+            </Show>
           </aside>
           <div class="drawer-scrim" onClick={() => setReferenceOpen(false)} />
         </div>

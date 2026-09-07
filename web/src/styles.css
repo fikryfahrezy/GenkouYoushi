@@ -191,6 +191,10 @@ button:disabled {
   flex: 1;
 }
 
+.navigation-rail {
+  touch-action: none;
+}
+
 .practice-section,
 .library-section {
   min-width: 0;
@@ -204,6 +208,7 @@ button:disabled {
 .practice-section {
   display: flex;
   flex-direction: column;
+  touch-action: none;
 }
 
 .workspace-header,
@@ -345,13 +350,21 @@ button:disabled {
   overflow: hidden;
 }
 
-.paper-viewport,
-.paper-surface,
-.paper-surface * {
+.navigation-rail,
+.navigation-rail *,
+.practice-section,
+.practice-section * {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+}
+
+.practice-section input[type="text"],
+.practice-section textarea,
+.practice-section [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .paper-surface {
@@ -658,6 +671,23 @@ button:disabled {
   width: 20px;
   height: 20px;
   accent-color: var(--grid);
+}
+
+.pencil-notice {
+  border-color: rgba(46, 69, 79, 0.2);
+  background: rgba(46, 69, 79, 0.07);
+}
+
+.pencil-notice strong {
+  color: var(--indigo);
+  font-size: 12px;
+}
+
+.pencil-notice > p:last-child {
+  margin: 6px 0 0;
+  color: var(--muted-sumi);
+  font-size: 10px;
+  line-height: 1.45;
 }
 
 .session-card {

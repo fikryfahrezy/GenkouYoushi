@@ -85,6 +85,24 @@ Deploy the generated `web/dist` directory to any HTTPS static host. Set `VITE_AP
 
 To install the PWA, first open `/app/`, then use the browser menu or Share sheet and choose **Install app** or **Add to Home Screen**. The installed PWA always launches at `/app/`; the landing page is outside its manifest and service-worker scope.
 
+## Apple Pencil and Scribble on iPadOS
+
+For now, users should turn off **Settings → Apple Pencil → Scribble** for reliable rapid strokes. With Scribble enabled, iPadOS can interpret short, direction-changing Pencil contacts as handwriting and claim the interaction before Safari delivers a complete pointer-event stream to the canvas. The app cannot change this system setting.
+
+Palm contact outside the canvas is handled separately. The practice interface disables native touch gestures, callouts, and text selection so a palm resting on either sidebar does not start a browser selection while drawing.
+
+Relevant platform documentation and issue history:
+
+- [Apple Pencil and Scribble — Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/apple-pencil-and-scribble)
+- [Apple: suppressing Scribble near a native drawing canvas](https://developer.apple.com/documentation/uikit/uiscribbleinteractiondelegate/scribbleinteraction%28_%3Ashouldbeginat%3A%29)
+- [Apple: Pointer Events and `touch-action` in iPadOS Safari](https://developer.apple.com/videos/play/wwdc2019/203/)
+- [WebKit bug 217430: missing Pointer Events with Scribble enabled](https://bugs.webkit.org/show_bug.cgi?id=217430)
+- [WebKit bug 246313: missing second `pointerdown`/`touchstart` in a Home Screen web app](https://bugs.webkit.org/show_bug.cgi?id=246313)
+- [WebKit bug 203031: missing second `pointerdown` on iPad](https://bugs.webkit.org/show_bug.cgi?id=203031)
+- [W3C Pointer Events issue 516: proposed web control over handwriting behavior](https://github.com/w3c/pointerevents/issues/516)
+
+The linked WebKit reports describe related historical failures and may be marked fixed; they are retained here as background for this class of iPadOS event-delivery issue rather than proof of a single current regression.
+
 ## Storage and export
 
 Practice sheets are saved to IndexedDB in the current browser profile. Export uses the system print dialog; choose **Save as PDF** or the equivalent option on your device. Clearing the site's browser data will also remove local sheets.
