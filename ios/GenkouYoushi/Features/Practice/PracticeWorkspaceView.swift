@@ -107,16 +107,16 @@ struct PracticeWorkspaceView: View {
             }
         }
         .padding(8)
-        .background(PaperPalette.paper.opacity(0.62), in: RoundedRectangle(cornerRadius: PaperRadius.panel))
+        .background(PaperPalette.paper.opacity(0.62), in: Rectangle())
         .overlay {
-            RoundedRectangle(cornerRadius: PaperRadius.panel)
+            Rectangle()
                 .stroke(PaperPalette.sumi.opacity(0.08), lineWidth: 1)
         }
     }
 
     private var seal: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: PaperRadius.control)
+            Rectangle()
                 .fill(PaperPalette.vermilion)
 
             Text("原")
@@ -173,8 +173,8 @@ struct PracticeWorkspaceView: View {
             }
             .zIndex(0)
         }
-        .background(PaperPalette.sumi.opacity(0.035), in: RoundedRectangle(cornerRadius: PaperRadius.panel))
-        .clipShape(RoundedRectangle(cornerRadius: PaperRadius.panel))
+        .background(PaperPalette.sumi.opacity(0.035), in: Rectangle())
+        .clipShape(Rectangle())
     }
 
     private func workspaceHeader(canToggleReferencePanel: Bool) -> some View {
@@ -212,7 +212,7 @@ struct PracticeWorkspaceView: View {
                 .frame(height: 30)
                 .background(
                     PaperPalette.paper.opacity(0.55),
-                    in: RoundedRectangle(cornerRadius: PaperRadius.control)
+                    in: Rectangle()
                 )
         }
         .padding(.horizontal, 18)
@@ -241,7 +241,7 @@ struct PracticeWorkspaceView: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .bold))
                         .frame(width: 30, height: 30)
-                        .background(PaperPalette.paper.opacity(0.72), in: RoundedRectangle(cornerRadius: PaperRadius.control))
+                        .background(PaperPalette.paper.opacity(0.72), in: Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Close reference panel")
@@ -251,12 +251,12 @@ struct PracticeWorkspaceView: View {
         }
         .padding(12)
         .background {
-            RoundedRectangle(cornerRadius: PaperRadius.panel)
+            Rectangle()
                 .fill(PaperPalette.canvas.opacity(0.98))
                 .shadow(color: PaperPalette.paperShadow, radius: 18, y: 8)
         }
         .overlay {
-            RoundedRectangle(cornerRadius: PaperRadius.panel)
+            Rectangle()
                 .stroke(PaperPalette.sumi.opacity(0.12), lineWidth: 1)
         }
     }
@@ -315,7 +315,7 @@ struct PracticeWorkspaceView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(PaperPalette.vermilion)
                     .frame(width: 40, height: 40)
-                    .background(PaperPalette.vermilionSoft, in: RoundedRectangle(cornerRadius: PaperRadius.control))
+                    .background(PaperPalette.vermilionSoft, in: Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Clear drawing")
@@ -363,7 +363,7 @@ struct PracticeWorkspaceView: View {
                         .padding(.vertical, 8)
                         .background(
                             PaperPalette.vermilionSoft,
-                            in: RoundedRectangle(cornerRadius: PaperRadius.control)
+                            in: Rectangle()
                         )
 
                     HStack(spacing: 6) {
@@ -558,7 +558,7 @@ struct PracticeWorkspaceView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(PaperPalette.paper.opacity(0.54), in: RoundedRectangle(cornerRadius: PaperRadius.panel))
+        .background(PaperPalette.paper.opacity(0.54), in: Rectangle())
     }
 
     private func documentCard(_ document: PracticeDocument) -> some View {

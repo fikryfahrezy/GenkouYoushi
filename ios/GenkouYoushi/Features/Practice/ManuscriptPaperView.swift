@@ -79,9 +79,9 @@ struct ManuscriptPaperView: View {
                 .position(x: gridFrame.midX, y: gridFrame.midY)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: PaperRadius.sheet * layoutScale))
+        .clipShape(Rectangle())
         .overlay {
-            RoundedRectangle(cornerRadius: PaperRadius.sheet * layoutScale)
+            Rectangle()
                 .stroke(PaperPalette.sumi.opacity(0.12), lineWidth: layoutScale)
         }
         .shadow(color: PaperPalette.paperShadow, radius: 24 * layoutScale, y: 12 * layoutScale)

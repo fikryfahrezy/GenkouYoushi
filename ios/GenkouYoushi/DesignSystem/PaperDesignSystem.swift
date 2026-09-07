@@ -23,12 +23,6 @@ enum PaperSpacing {
     static let xLarge: CGFloat = 32
 }
 
-enum PaperRadius {
-    static let control: CGFloat = 3
-    static let panel: CGFloat = 4
-    static let sheet: CGFloat = 1
-}
-
 struct PaperPanel<Content: View>: View {
     private let content: Content
 
@@ -39,9 +33,9 @@ struct PaperPanel<Content: View>: View {
     var body: some View {
         content
             .padding(PaperSpacing.medium)
-            .background(PaperPalette.paper.opacity(0.72), in: RoundedRectangle(cornerRadius: PaperRadius.panel))
+            .background(PaperPalette.paper.opacity(0.72), in: Rectangle())
             .overlay {
-                RoundedRectangle(cornerRadius: PaperRadius.panel)
+                Rectangle()
                     .stroke(PaperPalette.sumi.opacity(0.08), lineWidth: 1)
             }
     }
@@ -70,9 +64,9 @@ struct PaperIconButton: View {
             .padding(.vertical, 10)
             .background(
                 isSelected ? PaperPalette.indigo : Color.clear,
-                in: RoundedRectangle(cornerRadius: PaperRadius.control)
+                in: Rectangle()
             )
-            .contentShape(RoundedRectangle(cornerRadius: PaperRadius.control))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
@@ -98,11 +92,11 @@ struct PaperToolButton: View {
             .frame(height: 40)
             .background(
                 isSelected ? PaperPalette.indigo : PaperPalette.paper.opacity(0.92),
-                in: RoundedRectangle(cornerRadius: PaperRadius.control)
+                in: Rectangle()
             )
             .overlay {
                 if !isSelected {
-                    RoundedRectangle(cornerRadius: PaperRadius.control)
+                    Rectangle()
                         .stroke(PaperPalette.sumi.opacity(0.1), lineWidth: 1)
                 }
             }

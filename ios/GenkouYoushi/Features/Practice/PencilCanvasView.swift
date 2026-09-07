@@ -346,7 +346,6 @@ final class PaperViewportContainer: UIView {
         contentView.center = viewportCenter(offset: offset)
         paperHost?.view.frame = contentView.bounds
         canvas.frame = contentView.bounds
-        canvas.layer.cornerRadius = PaperRadius.sheet
         updateLivePreviewTransform()
         CATransaction.commit()
     }
@@ -411,7 +410,6 @@ final class PaperViewportContainer: UIView {
         contentView.center = viewportCenter(offset: offset)
         paperHost?.view.frame = contentView.bounds
         canvas.frame = contentView.bounds
-        canvas.layer.cornerRadius = PaperRadius.sheet * scale
     }
 
     private func updateLivePreviewTransform() {
