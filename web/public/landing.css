@@ -117,7 +117,7 @@ svg {
   width: 39px;
   height: 39px;
   place-items: center;
-  border-radius: 3px;
+  border-radius: 0;
   background: var(--vermilion);
   color: var(--paper);
   font-family: var(--serif);
@@ -153,7 +153,7 @@ svg {
   gap: 13px;
   padding: 0 23px;
   border: 1px solid transparent;
-  border-radius: 3px;
+  border-radius: 0;
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
@@ -334,7 +334,7 @@ h2 em {
   height: 16px;
   padding: 2px;
   border: 1px solid rgba(120, 146, 122, 0.5);
-  border-radius: 50%;
+  border-radius: 0;
   color: var(--grid);
   stroke-width: 2;
 }
@@ -373,7 +373,7 @@ h2 em {
   width: 720px;
   overflow: hidden;
   border: 1px solid rgba(33, 30, 25, 0.18);
-  border-radius: 7px;
+  border-radius: 0;
   background: #d8d2c5;
   box-shadow:
     0 40px 80px rgba(52, 46, 36, 0.2),
@@ -404,7 +404,7 @@ h2 em {
   width: 29px;
   height: 29px;
   place-items: center;
-  border-radius: 2px;
+  border-radius: 0;
   background: var(--vermilion);
   color: var(--paper);
   font-family: var(--serif);
@@ -570,7 +570,7 @@ h2 em {
   padding: 5px;
   transform: translateX(-50%);
   border: 1px solid rgba(33, 30, 25, 0.1);
-  border-radius: 3px;
+  border-radius: 0;
   background: rgba(251, 248, 237, 0.94);
   box-shadow: 0 7px 18px rgba(45, 39, 30, 0.14);
   color: var(--soft);
@@ -713,7 +713,7 @@ h2 em {
   position: relative;
   width: 24px;
   height: 13px;
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--grid);
 }
 
@@ -723,7 +723,7 @@ h2 em {
   right: 2px;
   width: 9px;
   height: 9px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--paper);
   content: "";
 }
@@ -732,7 +732,7 @@ h2 em {
   position: absolute;
   z-index: 1;
   border: 1px solid rgba(182, 58, 45, 0.13);
-  border-radius: 50%;
+  border-radius: 0;
 }
 
 .orbit-one {
@@ -959,7 +959,7 @@ h2 em {
   width: 150px;
   height: 30px;
   border-top: 3px solid var(--ink);
-  border-radius: 50%;
+  border-radius: 0;
 }
 
 .tool-strokes i:nth-child(2) {
@@ -1091,7 +1091,7 @@ h2 em {
   width: 700px;
   height: 700px;
   border: 1px solid #fbf8ed0d;
-  border-radius: 50%;
+  border-radius: 0;
   box-shadow:
     0 0 0 80px #fbf8ed05,
     0 0 0 160px #fbf8ed03;
@@ -1253,7 +1253,7 @@ h2 em {
   width: 35px;
   height: 35px;
   border: 3px double #b63a2db8;
-  border-radius: 50%;
+  border-radius: 0;
 }
 
 .story-copy > p:not(.eyebrow) {
@@ -1377,7 +1377,7 @@ h2 em {
   width: 410px;
   height: 410px;
   border: 1px solid #fbf8ed1a;
-  border-radius: 50%;
+  border-radius: 0;
   content: "";
 }
 
@@ -1691,7 +1691,7 @@ h2 em {
   }
 
   .app-window {
-    border-radius: 4px;
+    border-radius: 0;
   }
 
   .window-body {

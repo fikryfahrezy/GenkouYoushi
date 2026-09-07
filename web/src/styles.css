@@ -22,7 +22,7 @@
   --vermilion-soft: rgba(185, 51, 39, 0.11);
   --indigo: #2e454f;
   --line: rgba(31, 28, 23, 0.1);
-  --panel-radius: 5px;
+  --panel-radius: 0;
 }
 
 * {
@@ -104,7 +104,7 @@ button:disabled {
   width: 58px;
   height: 58px;
   place-items: center;
-  border-radius: 5px;
+  border-radius: 0;
   background: var(--vermilion);
   color: var(--paper);
   font-family: ui-serif, Georgia, serif;
@@ -117,7 +117,7 @@ button:disabled {
   height: 19px;
   border: 2px solid rgba(87, 81, 71, 0.22);
   border-top-color: var(--muted-sumi);
-  border-radius: 50%;
+  border-radius: 0;
   animation: spin 0.75s linear infinite;
 }
 
@@ -148,7 +148,7 @@ button:disabled {
   width: 46px;
   height: 46px;
   margin: 0 auto 10px;
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--vermilion);
   color: var(--paper);
   font-family: ui-serif, Georgia, serif;
@@ -164,7 +164,7 @@ button:disabled {
   min-height: 62px;
   padding: 9px 3px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 0;
   background: transparent;
   color: var(--muted-sumi);
   cursor: pointer;
@@ -288,7 +288,7 @@ button:disabled {
   height: 30px;
   margin-left: 5px;
   padding: 0 10px;
-  border-radius: 4px;
+  border-radius: 0;
   background: rgba(251, 247, 232, 0.56);
   color: var(--grid);
   font-size: 10px;
@@ -299,7 +299,7 @@ button:disabled {
 .save-status i {
   width: 7px;
   height: 7px;
-  border-radius: 50%;
+  border-radius: 0;
   background: currentColor;
 }
 
@@ -359,7 +359,7 @@ button:disabled {
   flex: none;
   overflow: hidden;
   border: 1px solid rgba(31, 28, 23, 0.12);
-  border-radius: 2px;
+  border-radius: 0;
   box-shadow: 0 12px 30px rgba(64, 56, 41, 0.16);
   transform-origin: center;
 }
@@ -435,7 +435,7 @@ button:disabled {
   height: 40px;
   padding: 0 13px;
   border: 1px solid rgba(31, 28, 23, 0.1);
-  border-radius: 4px;
+  border-radius: 0;
   background: rgba(251, 247, 232, 0.92);
   cursor: pointer;
   font-size: 12px;
@@ -498,7 +498,7 @@ button:disabled {
   width: 40px;
   height: 40px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--vermilion-soft);
   color: var(--vermilion);
   cursor: pointer;
@@ -849,7 +849,7 @@ button:disabled {
   width: min(390px, calc(100% - 40px));
   padding: 28px;
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 0;
   background: var(--paper);
   color: var(--sumi);
   box-shadow: 0 24px 80px rgba(31, 28, 23, 0.28);
