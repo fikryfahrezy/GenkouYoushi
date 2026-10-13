@@ -1,6 +1,7 @@
 from base64 import b64encode
+from html import escape
 from json import JSONDecodeError, loads
-from re import Match, search
+from re import DOTALL, Match, findall, search
 from threading import Lock
 from time import monotonic
 from typing import TypeAlias
@@ -135,6 +136,27 @@ def progressive_stroke_svgs(
     if not paths:
         raise UpstreamDataError("KanjiVG SVG contains no stroke paths.")
 
+    # Keep upstream copyright, license and warranty comments inside the SVG so
+    # notices survive clients that remove the XML declaration/DOCTYPE.
+    upstream_notices = "\n".join(
+        comment
+        for comment in findall(r"<!--.*?-->", svg, flags=DOTALL)
+        if any(
+            word in comment.lower()
+            for word in ("copyright", "license", "licence", "warranty")
+        )
+    )
+    source_url = (
+        "https://github.com/KanjiVG/kanjivg/blob/master/kanji/" + stroke_id + ".svg"
+    )
+    attribution = (
+        "Stroke diagrams adapted from KanjiVG, copyright Ulrich Apel. "
+        "Source: " + source_url + ". "
+        "Modified to show progressive strokes and optionally omit stroke numbers. "
+        "Adapted diagrams licensed under CC BY-SA 3.0: "
+        "https://creativecommons.org/licenses/by-sa/3.0/."
+    )
+
     progressive: list[str] = []
     for index, path in enumerate(paths):
         path_markup = _serialize(paths[:index]) + f"\t{_element_markup(path)}"
@@ -145,6 +167,8 @@ def progressive_stroke_svgs(
         )
         progressive.append(
             f"""{svg_tag}
+{upstream_notices}
+<metadata>{escape(attribution)}</metadata>
 {path_group_tag}
 {path_markup}
 </g>

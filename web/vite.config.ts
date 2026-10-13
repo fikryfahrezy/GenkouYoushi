@@ -3,6 +3,10 @@ import solid from "vite-plugin-solid";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+import { licenseNotices } from "./license-notices";
+
+const notices = licenseNotices();
+
 const ORT_RUNTIME_ASSETS = [
   {
     source: "ort-wasm-simd-threaded.mjs",
@@ -27,6 +31,7 @@ export default defineConfig({
   },
   plugins: [
     solid(),
+    notices.main,
     {
       name: "copy-onnx-wasm-runtime",
       configureServer(server) {
@@ -63,11 +68,13 @@ export default defineConfig({
       },
     },
   ],
+  worker: { plugins: () => [notices.worker()] },
   build: {
     rollupOptions: {
       input: {
         landing: resolve("index.html"),
         app: resolve("app/index.html"),
+        licenses: resolve("licenses/index.html"),
       },
     },
   },

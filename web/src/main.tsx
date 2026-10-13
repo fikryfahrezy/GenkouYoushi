@@ -568,6 +568,14 @@ function App() {
           <span>Library</span>
         </button>
         <span class="nav-spacer" />
+        <a
+          class="nav-button licenses-link"
+          href="/licenses/"
+          target="_blank"
+          rel="noopener"
+        >
+          Credits &amp; licenses
+        </a>
         <button
           class="nav-button install-help"
           onClick={() => installDialog.showModal()}
@@ -648,6 +656,20 @@ function App() {
               </div>
             </div>
 
+            <Show
+              when={activeGuides() && activePrompt()?.strokeOrderSvgs.length}
+            >
+              <p class="kanjivg-credit">
+                Stroke diagrams adapted from{" "}
+                <a href="https://kanjivg.tagaini.net/">KanjiVG</a>, © Ulrich
+                Apel. Modified to show progressive strokes and optionally omit
+                stroke numbers. Diagrams:{" "}
+                <a href="https://creativecommons.org/licenses/by-sa/3.0/">
+                  CC BY-SA 3.0
+                </a>
+                .
+              </p>
+            </Show>
             <div class="tool-shelf" role="toolbar" aria-label="Writing tools">
               <For
                 each={

@@ -140,3 +140,21 @@ OCR_TIMEOUT_SECONDS=20
 ```
 
 The included rate limiter is basic, in-memory, and per process. It resets when the API restarts and is not a substitute for an authenticated gateway or shared rate limiter on a public multi-instance deployment.
+
+## Third-party notices
+
+Stroke diagrams are adapted from KanjiVG, copyright Ulrich Apel, under
+[CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). The API modifies
+the diagrams to show progressive strokes and optionally omit stroke numbers.
+Each SVG retains upstream license comments and includes attribution, its source
+URL, and an adaptation notice. These diagrams retain CC BY-SA 3.0; the project's
+MIT code license does not replace the diagram license.
+
+The full KanjiVG license is in `licenses/KanjiVG-CC-BY-SA-3.0.txt`. Preserve SVG
+notices and provide attribution when displaying or exporting the diagrams.
+
+Run `uv run python scripts/license_notices.py` after installing locked dependencies
+to regenerate `licenses/PYTHON_DEPENDENCY_NOTICES.txt`. Docker builds also run this
+script against the final Python environment, failing if a dependency's license
+text is missing. OS package notices (including Tesseract and its Japanese data)
+remain under `/usr/share/doc`; retain these when redistributing the image.

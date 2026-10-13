@@ -24,7 +24,17 @@ https://kanji-api.fahrezy.work/docs
 ## Attribution
 
 - [kanjivg.tagaini.net](https://kanjivg.tagaini.net) / [KanjiVG/kanjivg](https://github.com/KanjiVG/kanjivg)
-- [SVGKit/SVGKit](https://github.com/SVGKit/SVGKit)
+- [SVGKit/SVGKit](https://github.com/SVGKit/SVGKit) (legacy iOS)
+
+The API's KanjiVG-derived diagrams are copyright Ulrich Apel and licensed under
+[CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). They are modified
+to show progressive strokes and optionally omit stroke numbers. This diagram
+license is separate from the project's MIT code license.
+
+The web app includes a Credits & Licenses page at `/licenses/`. See
+[web notices](web/README.md#credits-and-licenses) and
+[API notices](api/README.md#third-party-notices) for bundled licenses and regeneration.
+
 
 ## Demo
 

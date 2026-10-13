@@ -1355,7 +1355,7 @@ button:disabled {
   .navigation-rail {
     grid-row: 2;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     padding: 4px;
   }
 
@@ -1501,5 +1501,36 @@ button:disabled {
     transform: none !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+  }
+}
+
+.licenses-link {
+  color: inherit;
+  text-align: center;
+  text-decoration: underline;
+  font-size: 10px;
+}
+
+.kanjivg-credit {
+  margin: 10px 16px;
+  max-width: 80ch;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.kanjivg-credit a {
+  color: inherit;
+}
+
+@media print {
+  .paper-viewport {
+    height: auto !important;
+  }
+  .kanjivg-credit {
+    font-size: 8pt;
+    break-inside: avoid;
+  }
+  .kanjivg-credit a::after {
+    content: " (" attr(href) ")";
   }
 }

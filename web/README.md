@@ -106,3 +106,26 @@ The linked WebKit reports describe related historical failures and may be marked
 ## Storage and export
 
 Practice sheets are saved to IndexedDB in the current browser profile. Export uses the system print dialog; choose **Save as PDF** or the equivalent option on your device. Clearing the site's browser data will also remove local sheets.
+
+## Credits and licenses
+
+The landing page and app link to `/licenses/`, which credits KanjiVG and DaKanji
+and links to complete third-party license texts. The PWA caches these notices
+for offline access. Sheets containing KanjiVG guides include attribution in
+printed/PDF exports.
+
+`license-notices.ts`, adapted from Kaku's notice workflow, inventories packages
+actually included in the browser/worker bundles and includes their complete
+license texts. Run `bun run build` to regenerate the development snapshot in
+`public/licenses/THIRD_PARTY_NOTICES.txt`; the same notices are emitted in `dist`.
+Missing package license texts fail the build. ONNX Runtime's MIT license and
+complete third-party notice collection are vendored in `licenses/onnxruntime-1.22.0`.
+Update those files and the version guard when upgrading ONNX Runtime. Its WASM
+assets are copied directly from the installed package by the Vite build.
+
+KanjiVG-derived diagrams are licensed under CC BY-SA 3.0 and identify modifications
+for progressive stroke display and optional removal of stroke numbers. This
+asset license is separate from the project's MIT code license.
+
+The landing page loads DM Sans and Noto Serif JP from Google Fonts. If the font
+files are bundled or self-hosted later, include their copyright and SIL OFL texts.
