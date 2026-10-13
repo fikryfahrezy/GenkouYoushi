@@ -127,5 +127,5 @@ KanjiVG-derived diagrams are licensed under CC BY-SA 3.0 and identify modificati
 for progressive stroke display and optional removal of stroke numbers. This
 asset license is separate from the project's MIT code license.
 
-The landing page loads DM Sans and Noto Serif JP from Google Fonts. If the font
-files are bundled or self-hosted later, include their copyright and SIL OFL texts.
+The landing page uses system monospace, serif, and sans-serif font stacks,
+matching Kaku and Tsuzuru without loading external font files.
