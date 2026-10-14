@@ -1,8 +1,10 @@
-from typing import Literal, TypeAlias
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-OCRProviderName: TypeAlias = Literal["tesseract", "google"]
+class OCRProviderName(StrEnum):
+    TESSERACT = "tesseract"
+    GOOGLE = "google"
 
 
 class KanjiResponse(BaseModel):

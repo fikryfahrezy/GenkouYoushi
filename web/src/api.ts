@@ -16,7 +16,10 @@ interface OcrResponse {
   candidates: KanjiCandidate[];
 }
 
-export type OcrProvider = "tesseract" | "google";
+export enum OcrProvider {
+  Tesseract = "tesseract",
+  Google = "google",
+}
 
 export interface ImageCrop {
   x: number;

@@ -1,6 +1,10 @@
 import { createID } from "./id";
 
-export type WritingTool = "brush" | "pencil" | "eraser";
+export enum WritingTool {
+  Brush = "brush",
+  Pencil = "pencil",
+  Eraser = "eraser",
+}
 
 export interface InkPoint {
   x: number;

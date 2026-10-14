@@ -17,6 +17,7 @@ from .errors import (
     UpstreamDataError,
     UpstreamServiceError,
 )
+from .schemas import OCRProviderName
 from .rate_limit import SlidingWindowRateLimiter
 from .routers import kanji_router, ocr_router
 from .services import (
@@ -60,8 +61,8 @@ def _install_services(app: FastAPI, settings: Settings) -> None:
     app.state.kanji_service = KanjiService(kanjivg_client)
     app.state.ocr_service = OCRService(
         providers={
-            "tesseract": TesseractProvider(settings),
-            "google": GoogleVisionProvider(settings),
+            OCRProviderName.TESSERACT: TesseractProvider(settings),
+            OCRProviderName.GOOGLE: GoogleVisionProvider(settings),
         },
         maximum_image_bytes=settings.ocr_max_image_bytes,
     )

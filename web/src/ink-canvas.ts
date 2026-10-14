@@ -1,10 +1,10 @@
+import { WritingTool } from "./models";
 import { createID } from "./id";
 import type {
   InkPoint,
   InkStroke,
   ManuscriptGrid,
   PracticePrompt,
-  WritingTool,
 } from "./models";
 import { svgDataUrl } from "./svg";
 
@@ -104,7 +104,7 @@ export class PaperCanvas {
       prompt: { character: "永", strokeOrderSvgs: [] },
       showsGuides: true,
       strokes: [],
-      tool: "brush",
+      tool: WritingTool.Brush,
       width: 3.8,
     };
 
@@ -458,13 +458,13 @@ export class PaperCanvas {
     context.lineCap = "round";
     context.lineJoin = "round";
 
-    if (stroke.tool === "eraser") {
+    if (stroke.tool === WritingTool.Eraser) {
       context.globalCompositeOperation = "destination-out";
       context.globalAlpha = 1;
       context.strokeStyle = "#000";
       context.lineWidth = stroke.width * ERASER_WIDTH_MULTIPLIER;
       this.strokeLine(context, x1, y1, x2, y2);
-    } else if (stroke.tool === "pencil") {
+    } else if (stroke.tool === WritingTool.Pencil) {
       const dx = x2 - x1;
       const dy = y2 - y1;
       const length = Math.max(Math.hypot(dx, dy), 0.001);
@@ -514,12 +514,13 @@ export class PaperCanvas {
       0,
       Math.PI * 2,
     );
-    if (stroke.tool === "eraser") {
+    if (stroke.tool === WritingTool.Eraser) {
       context.globalCompositeOperation = "destination-out";
       context.fillStyle = "#000";
     } else {
-      context.globalAlpha = stroke.tool === "pencil" ? 0.32 : 0.94;
-      context.fillStyle = stroke.tool === "pencil" ? "#575147" : "#1f1c17";
+      context.globalAlpha = stroke.tool === WritingTool.Pencil ? 0.32 : 0.94;
+      context.fillStyle =
+        stroke.tool === WritingTool.Pencil ? "#575147" : "#1f1c17";
     }
     context.fill();
     context.restore();
@@ -569,7 +570,7 @@ export class PaperCanvas {
     if (this.gestureStart) return;
     this.activeStrokePointer = event.pointerId;
     this.activeStrokeWasTouch = event.pointerType === "touch";
-    if (this.state.tool === "eraser") {
+    if (this.state.tool === WritingTool.Eraser) {
       this.strokesBeforeErase = structuredClone(this.state.strokes);
       this.lastEraserPoint = this.pointFromEvent(event);
       this.eraseStrokesBetween(this.lastEraserPoint, this.lastEraserPoint);
@@ -606,7 +607,7 @@ export class PaperCanvas {
       typeof event.getCoalescedEvents === "function"
         ? event.getCoalescedEvents()
         : [event];
-    if (this.state.tool === "eraser") {
+    if (this.state.tool === WritingTool.Eraser) {
       for (const sample of events.length > 0 ? events : [event]) {
         const next = this.pointFromEvent(sample);
         const previous = this.lastEraserPoint ?? next;
@@ -655,7 +656,7 @@ export class PaperCanvas {
       this.onChange(structuredClone(this.state.strokes));
     } else if (
       this.activeStroke &&
-      this.activeStroke.tool !== "eraser" &&
+      this.activeStroke.tool !== WritingTool.Eraser &&
       this.activeStroke.points.length > 0
     ) {
       this.onChange(structuredClone(this.state.strokes));
@@ -692,7 +693,7 @@ export class PaperCanvas {
     const beforeCount = this.state.strokes.length;
     this.state.strokes = this.state.strokes.filter(
       (stroke) =>
-        stroke.tool === "eraser" ||
+        stroke.tool === WritingTool.Eraser ||
         !this.strokeIntersectsEraser(stroke, from, to, eraserRadius),
     );
     if (this.state.strokes.length !== beforeCount) {

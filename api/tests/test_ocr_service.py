@@ -1,13 +1,15 @@
 import unittest
 from base64 import b64encode
 
+from pydantic import ValidationError
+
 from kanji_api.errors import ImageTooLargeError, InvalidImageError
 from kanji_api.services.ocr import (
     OCRImage,
     OCRService,
     candidates_from_tesseract_tsv,
 )
-from kanji_api.schemas import OCRCandidate
+from kanji_api.schemas import OCRCandidate, OCRProviderName, OCRRequest
 
 
 class StubProvider:
@@ -25,7 +27,10 @@ class OCRServiceTests(unittest.TestCase):
         self.local = StubProvider("永")
         self.google = StubProvider("字")
         self.service = OCRService(
-            providers={"tesseract": self.local, "google": self.google},
+            providers={
+                OCRProviderName.TESSERACT: self.local,
+                OCRProviderName.GOOGLE: self.google,
+            },
             maximum_image_bytes=8,
         )
 
@@ -38,11 +43,28 @@ class OCRServiceTests(unittest.TestCase):
 
     def test_uses_explicit_provider(self) -> None:
         result = self.service.recognize(
-            b64encode(b"image").decode(), "image/jpeg", "google"
+            b64encode(b"image").decode(), "image/jpeg", OCRProviderName.GOOGLE
         )
 
         self.assertEqual(result[0].character, "字")
         self.assertEqual(len(self.google.images), 1)
+
+    def test_provider_request_preserves_wire_values(self) -> None:
+        for value in ("tesseract", "google"):
+            with self.subTest(provider=value):
+                request = OCRRequest(image="aW1hZ2U=", provider=value)
+                self.assertIsInstance(request.provider, OCRProviderName)
+                self.assertEqual(request.model_dump(mode="json")["provider"], value)
+                result = self.service.recognize(
+                    request.image, request.mime_type, request.provider
+                )
+                self.assertEqual(
+                    result[0].character, "永" if value == "tesseract" else "字"
+                )
+
+    def test_rejects_unsupported_provider(self) -> None:
+        with self.assertRaises(ValidationError):
+            OCRRequest(image="aW1hZ2U=", provider="unsupported")
 
     def test_rejects_invalid_base64(self) -> None:
         with self.assertRaises(InvalidImageError):

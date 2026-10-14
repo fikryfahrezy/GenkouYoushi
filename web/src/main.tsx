@@ -28,6 +28,7 @@ import {
 } from "lucide-solid";
 import "./styles.css";
 import {
+  OcrProvider,
   lookupKanji,
   prepareImageForOcr,
   recognizeKanji,
@@ -43,11 +44,26 @@ import {
   type KanjiCandidate,
   type ManuscriptGrid,
   type PracticeDocument,
-  type WritingTool,
+  WritingTool,
 } from "./models";
 
-type Section = "practice" | "library";
-type CropMode = "move" | "northwest" | "northeast" | "southwest" | "southeast";
+enum Section {
+  Practice = "practice",
+  Library = "library",
+}
+
+enum CropMode {
+  Move = "move",
+  Northwest = "northwest",
+  Northeast = "northeast",
+  Southwest = "southwest",
+  Southeast = "southeast",
+}
+
+enum LookupErrorTarget {
+  Reference = "reference",
+  Photo = "photo",
+}
 
 const DEFAULT_PHOTO_CROP: ImageCrop = {
   x: 0.2,
@@ -68,8 +84,8 @@ function App() {
   const [loading, setLoading] = createSignal(true);
   const [documents, setDocuments] = createSignal<PracticeDocument[]>([]);
   const [activeDocumentId, setActiveDocumentId] = createSignal("");
-  const [section, setSection] = createSignal<Section>("practice");
-  const [tool, setTool] = createSignal<WritingTool>("brush");
+  const [section, setSection] = createSignal<Section>(Section.Practice);
+  const [tool, setTool] = createSignal<WritingTool>(WritingTool.Brush);
   const [strokeWidth, setStrokeWidth] = createSignal(3.8);
   const [undoStack, setUndoStack] = createSignal<InkStroke[][]>([]);
   const [redoStack, setRedoStack] = createSignal<InkStroke[][]>([]);
@@ -234,9 +250,10 @@ function App() {
 
   async function performLookup(
     focusCanvas: boolean,
-    errorTarget: "reference" | "photo" = "reference",
+    errorTarget: LookupErrorTarget = LookupErrorTarget.Reference,
   ): Promise<boolean> {
-    const updateError = errorTarget === "photo" ? setOcrError : setError;
+    const updateError =
+      errorTarget === LookupErrorTarget.Photo ? setOcrError : setError;
     setLookingUp(true);
     updateError("");
     try {
@@ -273,7 +290,7 @@ function App() {
           "Local handwriting recognition failed; using printed-text OCR.",
           localCause,
         );
-        candidates = await recognizeKanji(image, "tesseract");
+        candidates = await recognizeKanji(image, OcrProvider.Tesseract);
       }
       if (candidates.length === 0) {
         if (localFailure instanceof Error) throw localFailure;
@@ -314,7 +331,7 @@ function App() {
 
   async function applyOcrCandidate(candidate: KanjiCandidate): Promise<void> {
     kanjiInput.value = candidate.character;
-    const applied = await performLookup(true, "photo");
+    const applied = await performLookup(true, LookupErrorTarget.Photo);
     if (applied) photoDialog.close();
   }
 
@@ -351,7 +368,7 @@ function App() {
     const initial = interaction.crop;
     const minimumSize = 0.12;
 
-    if (interaction.mode === "move") {
+    if (interaction.mode === CropMode.Move) {
       setPhotoCrop({
         ...initial,
         x: clamp(initial.x + deltaX, 0, 1 - initial.width),
@@ -365,13 +382,19 @@ function App() {
     let right = initial.x + initial.width;
     let bottom = initial.y + initial.height;
 
-    if (interaction.mode === "northwest" || interaction.mode === "southwest") {
+    if (
+      interaction.mode === CropMode.Northwest ||
+      interaction.mode === CropMode.Southwest
+    ) {
       left = clamp(initial.x + deltaX, 0, right - minimumSize);
     } else {
       right = clamp(initial.x + initial.width + deltaX, left + minimumSize, 1);
     }
 
-    if (interaction.mode === "northwest" || interaction.mode === "northeast") {
+    if (
+      interaction.mode === CropMode.Northwest ||
+      interaction.mode === CropMode.Northeast
+    ) {
       top = clamp(initial.y + deltaY, 0, bottom - minimumSize);
     } else {
       bottom = clamp(initial.y + initial.height + deltaY, top + minimumSize, 1);
@@ -401,7 +424,7 @@ function App() {
     setRedoStack([]);
     await saveDocument(document);
     setNewSheetPickerOpen(false);
-    setSection("practice");
+    setSection(Section.Practice);
     paperCanvas()?.resetViewport();
     void performLookup(false);
   }
@@ -413,7 +436,7 @@ function App() {
       setUndoStack([]);
       setRedoStack([]);
     }
-    setSection("practice");
+    setSection(Section.Practice);
     requestAnimationFrame(() => paperCanvas()?.resetViewport());
   }
 
@@ -437,7 +460,7 @@ function App() {
 
   function showSection(next: Section): void {
     setSection(next);
-    if (next === "practice")
+    if (next === Section.Practice)
       requestAnimationFrame(() => paperCanvas()?.resetViewport());
   }
 
@@ -548,9 +571,9 @@ function App() {
         <button
           classList={{
             "nav-button": true,
-            "is-selected": section() === "practice",
+            "is-selected": section() === Section.Practice,
           }}
-          onClick={() => showSection("practice")}
+          onClick={() => showSection(Section.Practice)}
           type="button"
         >
           <Pencil class="nav-icon" aria-hidden="true" />
@@ -559,9 +582,9 @@ function App() {
         <button
           classList={{
             "nav-button": true,
-            "is-selected": section() === "library",
+            "is-selected": section() === Section.Library,
           }}
-          onClick={() => showSection("library")}
+          onClick={() => showSection(Section.Library)}
           type="button"
         >
           <BookOpen class="nav-icon" aria-hidden="true" />
@@ -587,7 +610,7 @@ function App() {
         </button>
       </nav>
 
-      <section class="practice-section" hidden={section() !== "practice"}>
+      <section class="practice-section" hidden={section() !== Section.Practice}>
         <header class="workspace-header">
           <div>
             <p class="eyebrow">GENKOU YOUSHI</p>
@@ -674,9 +697,9 @@ function App() {
               <For
                 each={
                   [
-                    { id: "brush", icon: PenTool, label: "Pen" },
-                    { id: "pencil", icon: Pencil, label: "Pencil" },
-                    { id: "eraser", icon: Eraser, label: "Eraser" },
+                    { id: WritingTool.Brush, icon: PenTool, label: "Pen" },
+                    { id: WritingTool.Pencil, icon: Pencil, label: "Pencil" },
+                    { id: WritingTool.Eraser, icon: Eraser, label: "Eraser" },
                   ] as const
                 }
               >
@@ -700,7 +723,7 @@ function App() {
               <label
                 classList={{
                   "stroke-control": true,
-                  "is-disabled": tool() === "eraser",
+                  "is-disabled": tool() === WritingTool.Eraser,
                 }}
               >
                 <span>Line weight</span>
@@ -869,7 +892,7 @@ function App() {
         </div>
       </section>
 
-      <section class="library-section" hidden={section() !== "library"}>
+      <section class="library-section" hidden={section() !== Section.Library}>
         <header class="library-header">
           <div>
             <p class="eyebrow">LOCAL LIBRARY</p>
@@ -1001,7 +1024,9 @@ function App() {
                     width: `${photoCrop().width * 100}%`,
                     height: `${photoCrop().height * 100}%`,
                   }}
-                  onPointerDown={(event) => startCropInteraction(event, "move")}
+                  onPointerDown={(event) =>
+                    startCropInteraction(event, CropMode.Move)
+                  }
                   role="group"
                   aria-label="Selected scan area. Drag to move and use the corner handles to resize."
                 >
@@ -1021,7 +1046,7 @@ function App() {
                   <button
                     class="photo-crop-handle northwest"
                     onPointerDown={(event) =>
-                      startCropInteraction(event, "northwest")
+                      startCropInteraction(event, CropMode.Northwest)
                     }
                     type="button"
                     aria-label="Resize scan area from top left"
@@ -1029,7 +1054,7 @@ function App() {
                   <button
                     class="photo-crop-handle northeast"
                     onPointerDown={(event) =>
-                      startCropInteraction(event, "northeast")
+                      startCropInteraction(event, CropMode.Northeast)
                     }
                     type="button"
                     aria-label="Resize scan area from top right"
@@ -1037,7 +1062,7 @@ function App() {
                   <button
                     class="photo-crop-handle southwest"
                     onPointerDown={(event) =>
-                      startCropInteraction(event, "southwest")
+                      startCropInteraction(event, CropMode.Southwest)
                     }
                     type="button"
                     aria-label="Resize scan area from bottom left"
@@ -1045,7 +1070,7 @@ function App() {
                   <button
                     class="photo-crop-handle southeast"
                     onPointerDown={(event) =>
-                      startCropInteraction(event, "southeast")
+                      startCropInteraction(event, CropMode.Southeast)
                     }
                     type="button"
                     aria-label="Resize scan area from bottom right"

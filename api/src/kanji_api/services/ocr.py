@@ -55,7 +55,7 @@ class OCRService:
             maximum_mb = self._maximum_image_bytes / (1024 * 1024)
             raise ImageTooLargeError(f"The image must be smaller than {maximum_mb:g} MB.")
 
-        selected_provider = provider_name or "tesseract"
+        selected_provider = provider_name or OCRProviderName.TESSERACT
         provider = self._providers[selected_provider]
         return provider.recognize(
             OCRImage(bytes=image_bytes, base64=image_base64, mime_type=mime_type)
