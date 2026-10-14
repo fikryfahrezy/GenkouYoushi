@@ -1,14 +1,7 @@
 :root {
   color: #1f1c17;
-  background: #d9d4c8;
-  font-family:
-    Inter,
-    ui-rounded,
-    "SF Pro Rounded",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
+  background: #e3ded0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   --canvas: #e3ded0;
@@ -16,12 +9,12 @@
   --paper: #fbf7e8;
   --sumi: #1f1c17;
   --muted-sumi: #575147;
-  --faint-sumi: #858070;
+  --faint-sumi: #756f62;
   --grid: #6b876e;
   --vermilion: #b93327;
   --vermilion-soft: rgba(185, 51, 39, 0.11);
   --indigo: #2e454f;
-  --line: rgba(31, 28, 23, 0.1);
+  --line: rgba(31, 28, 23, 0.16);
   --panel-radius: 0;
 }
 
@@ -39,7 +32,8 @@ body,
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -48,14 +42,15 @@ button {
 }
 
 button:focus-visible,
+a:focus-visible,
 input:focus-visible {
   outline: 2px solid var(--vermilion);
-  outline-offset: 2px;
+  outline-offset: 4px;
 }
 
 button:disabled {
-  cursor: default;
-  opacity: 0.38;
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 [hidden] {
@@ -74,11 +69,15 @@ button:disabled {
     max(12px, env(safe-area-inset-left));
   background:
     radial-gradient(
-      circle at 18% 5%,
-      rgba(255, 255, 255, 0.24),
-      transparent 34%
+      circle at 10% 5%,
+      rgba(185, 51, 39, 0.055),
+      transparent 35rem
     ),
-    linear-gradient(135deg, var(--canvas), var(--canvas-deep));
+    linear-gradient(rgba(31, 28, 23, 0.025) 1px, transparent 1px), var(--canvas);
+  background-size:
+    auto,
+    100% 30px,
+    auto;
 }
 
 .startup-loading {
@@ -91,11 +90,15 @@ button:disabled {
   gap: 14px;
   background:
     radial-gradient(
-      circle at 18% 5%,
-      rgba(255, 255, 255, 0.24),
-      transparent 34%
+      circle at 10% 5%,
+      rgba(185, 51, 39, 0.055),
+      transparent 35rem
     ),
-    linear-gradient(135deg, var(--canvas), var(--canvas-deep));
+    linear-gradient(rgba(31, 28, 23, 0.025) 1px, transparent 1px), var(--canvas);
+  background-size:
+    auto,
+    100% 30px,
+    auto;
   color: var(--muted-sumi);
 }
 
@@ -109,7 +112,7 @@ button:disabled {
   color: var(--paper);
   font-family: ui-serif, Georgia, serif;
   font-size: 29px;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .startup-spinner {
@@ -137,23 +140,22 @@ button:disabled {
   padding: 8px;
   border: 1px solid rgba(31, 28, 23, 0.08);
   border-radius: var(--panel-radius);
-  background: rgba(251, 247, 232, 0.62);
-  backdrop-filter: blur(18px);
+  background: rgba(251, 247, 232, 0.45);
 }
 
 .seal {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   margin: 0 auto 10px;
   border-radius: 0;
   background: var(--vermilion);
   color: var(--paper);
-  font-family: ui-serif, Georgia, serif;
-  font-size: 23px;
-  font-weight: 800;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-size: 27px;
+  font-weight: 500;
 }
 
 .nav-button {
@@ -163,28 +165,35 @@ button:disabled {
   gap: 5px;
   min-height: 62px;
   padding: 9px 3px;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 0;
   background: transparent;
   color: var(--muted-sumi);
   cursor: pointer;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 9px;
+  font-weight: 400;
 }
 
 .nav-button:hover {
-  background: rgba(251, 247, 232, 0.8);
+  color: var(--vermilion);
 }
 
 .nav-button.is-selected {
-  background: var(--indigo);
-  color: var(--paper);
+  border-color: rgba(185, 51, 39, 0.25);
+  background: rgba(185, 51, 39, 0.07);
+  color: var(--vermilion);
+}
+
+.rail-mark {
+  font:
+    24px/1 "Yu Mincho",
+    serif;
 }
 
 .nav-icon {
   width: 22px;
   height: 22px;
-  stroke-width: 1.8;
+  stroke-width: 1.7;
 }
 
 .nav-spacer {
@@ -221,8 +230,7 @@ button:disabled {
   gap: 16px;
   padding: 0 18px;
   border-bottom: 1px solid rgba(31, 28, 23, 0.07);
-  background: rgba(251, 247, 232, 0.55);
-  backdrop-filter: blur(18px);
+  background: var(--paper);
 }
 
 .workspace-header h1,
@@ -237,7 +245,7 @@ button:disabled {
   margin: 0;
   color: var(--faint-sumi);
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.15em;
 }
 
@@ -278,7 +286,7 @@ button:disabled {
   padding: 0 11px;
   color: var(--indigo);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 400;
 }
 
 .export-button svg {
@@ -452,13 +460,17 @@ button:disabled {
   background: rgba(251, 247, 232, 0.92);
   cursor: pointer;
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 400;
+}
+
+.tool-button:hover:not(:disabled) {
+  color: var(--vermilion);
 }
 
 .tool-button.is-selected {
-  border-color: var(--indigo);
-  background: var(--indigo);
-  color: var(--paper);
+  border-color: var(--vermilion);
+  background: rgba(185, 51, 39, 0.07);
+  color: var(--vermilion);
 }
 
 .tool-button svg {
@@ -551,7 +563,7 @@ button:disabled {
   margin-bottom: 10px;
   color: var(--faint-sumi);
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.15em;
 }
 
@@ -627,7 +639,7 @@ button:disabled {
   color: var(--indigo);
   cursor: pointer;
   font-size: 10px;
-  font-weight: 750;
+  font-weight: 400;
 }
 
 .photo-button svg {
@@ -736,7 +748,7 @@ button:disabled {
   color: var(--paper);
   cursor: pointer;
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 400;
 }
 
 .new-sheet-button svg {
@@ -1098,7 +1110,7 @@ button:disabled {
   color: var(--indigo);
   cursor: pointer;
   font-size: 9px;
-  font-weight: 750;
+  font-weight: 400;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -1145,7 +1157,7 @@ button:disabled {
   border: 1px solid rgba(46, 69, 79, 0.24);
   cursor: pointer;
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 400;
 }
 
 .photo-replace-button,
@@ -1369,6 +1381,10 @@ button:disabled {
     padding: 3px;
   }
 
+  .rail-mark {
+    font-size: 19px;
+  }
+
   .nav-icon {
     width: 19px;
     height: 19px;
@@ -1533,4 +1549,21 @@ button:disabled {
   .kanjivg-credit a::after {
     content: " (" attr(href) ")";
   }
+}
+
+/* Action hover colors follow the shared Tsuzuru controls. */
+.new-sheet-button:hover:not(:disabled),
+.kanji-form button:hover:not(:disabled),
+.photo-scan-button:hover:not(:disabled) {
+  border-color: var(--vermilion);
+  background: var(--vermilion);
+  color: var(--paper);
+}
+
+.icon-button:hover:not(:disabled),
+.export-button:hover:not(:disabled),
+.photo-button:hover:not(:disabled),
+.photo-replace-button:hover:not(:disabled),
+.photo-rescan-button:hover:not(:disabled) {
+  color: var(--vermilion);
 }

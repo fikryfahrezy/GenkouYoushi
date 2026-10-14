@@ -9,7 +9,6 @@ import {
 } from "solid-js";
 import { render } from "solid-js/web";
 import {
-  BookOpen,
   Download,
   Eraser,
   FileDown,
@@ -565,7 +564,7 @@ function App() {
       </Show>
 
       <nav class="navigation-rail" aria-label="Main navigation">
-        <div class="seal" aria-label="Genkou Youshi">
+        <div class="seal" lang="ja" aria-label="Genkou Youshi">
           原
         </div>
         <button
@@ -573,10 +572,13 @@ function App() {
             "nav-button": true,
             "is-selected": section() === Section.Practice,
           }}
+          aria-pressed={section() === Section.Practice}
           onClick={() => showSection(Section.Practice)}
           type="button"
         >
-          <Pencil class="nav-icon" aria-hidden="true" />
+          <span class="rail-mark" lang="ja" aria-hidden="true">
+            書
+          </span>
           <span>Practice</span>
         </button>
         <button
@@ -584,10 +586,13 @@ function App() {
             "nav-button": true,
             "is-selected": section() === Section.Library,
           }}
+          aria-pressed={section() === Section.Library}
           onClick={() => showSection(Section.Library)}
           type="button"
         >
-          <BookOpen class="nav-icon" aria-hidden="true" />
+          <span class="rail-mark" lang="ja" aria-hidden="true">
+            冊
+          </span>
           <span>Library</span>
         </button>
         <span class="nav-spacer" />
