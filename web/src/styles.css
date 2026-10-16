@@ -685,6 +685,57 @@ button:disabled {
   accent-color: var(--grid);
 }
 
+.stroke-order-details {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(31, 28, 23, 0.08);
+}
+
+.stroke-order-details summary {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.stroke-order-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stroke-order-list li {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 4px;
+  background: var(--paper);
+}
+
+.stroke-order-list span {
+  align-self: flex-start;
+  padding-left: 4px;
+  color: var(--faint-sumi);
+  font-size: 10px;
+}
+
+.stroke-order-list img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.stroke-order-note {
+  margin: 12px 0 0;
+  color: var(--faint-sumi);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
 .pencil-notice {
   border-color: rgba(46, 69, 79, 0.2);
   background: rgba(46, 69, 79, 0.07);

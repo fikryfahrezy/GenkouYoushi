@@ -860,6 +860,36 @@ function App() {
                   checked={active()?.showsGuides ?? true}
                 />
               </label>
+              <details class="stroke-order-details">
+                <summary>
+                  Stroke order ({activePrompt()?.strokeOrderSvgs.length ?? 0})
+                </summary>
+                <Show
+                  when={activePrompt()?.strokeOrderSvgs.length}
+                  fallback={
+                    <p class="stroke-order-note">
+                      Look up a kanji to see its stroke order.
+                    </p>
+                  }
+                >
+                  <ol class="stroke-order-list">
+                    <For each={activePrompt()?.strokeOrderSvgs}>
+                      {(svg, index) => (
+                        <li>
+                          <span aria-hidden="true">{index() + 1}</span>
+                          <img
+                            src={svgDataUrl(svg)}
+                            alt={`${activePrompt()?.character ?? "Kanji"}, stroke ${index() + 1}`}
+                            loading="lazy"
+                            width="80"
+                            height="80"
+                          />
+                        </li>
+                      )}
+                    </For>
+                  </ol>
+                </Show>
+              </details>
             </div>
 
             <div class="reference-card session-card">
