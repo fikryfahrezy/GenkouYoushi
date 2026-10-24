@@ -26,4 +26,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:80 || exit 1
 
 COPY ./nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=builder /workspace/dist /var/www/out
+COPY --from=builder /workspace/.output/public /var/www/out

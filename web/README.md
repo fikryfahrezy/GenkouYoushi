@@ -1,6 +1,6 @@
 # Genkou Youshi Web
 
-A SolidJS and TypeScript PWA port of the iPad app. Solid owns the reactive UI while the drawing engine remains framework-independent.
+A SolidJS and TypeScript PWA port of the iPad app, built with SolidStart. Solid owns the reactive UI while the drawing engine remains framework-independent.
 
 ## Local development
 
@@ -81,7 +81,9 @@ Build the static site with:
 bun run build
 ```
 
-Deploy the generated `web/dist` directory to any HTTPS static host. Set `VITE_API_BASE_URL` to a compatible service before building. The marketing landing page is served at `/`, while the installable application lives at `/app/`.
+Deploy the generated `web/.output/public` directory to any HTTPS static host. Set `VITE_API_BASE_URL` to a compatible service before building. The marketing landing page is served at `/`, while the installable application lives at `/app/`.
+
+SolidStart's static preset prerenders every route at build time (see `src/routes`). The landing (`/`) and credits (`/licenses/`) pages ship as complete HTML and hydrate afterwards; `/app/` prerenders only its document shell because the workspace renders client-side.
 
 To install the PWA, first open `/app/`, then use the browser menu or Share sheet and choose **Install app** or **Add to Home Screen**. The installed PWA always launches at `/app/`; the landing page is outside its manifest and service-worker scope.
 
@@ -117,7 +119,7 @@ printed/PDF exports.
 `license-notices.ts`, adapted from Kaku's notice workflow, inventories packages
 actually included in the browser/worker bundles and includes their complete
 license texts. Run `bun run build` to regenerate the development snapshot in
-`public/licenses/THIRD_PARTY_NOTICES.txt`; the same notices are emitted in `dist`.
+`public/licenses/THIRD_PARTY_NOTICES.txt`; the same notices are emitted in `.output/public`.
 Missing package license texts fail the build. ONNX Runtime's MIT license and
 complete third-party notice collection are vendored in `licenses/onnxruntime-1.22.0`.
 Update those files and the version guard when upgrading ONNX Runtime. Its WASM

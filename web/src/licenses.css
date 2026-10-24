@@ -1,0 +1,27 @@
+body {
+  margin: 0;
+  background: #f4f0e8;
+  color: #292720;
+  font:
+    1rem/1.7 system-ui,
+    sans-serif;
+}
+main {
+  max-width: 48rem;
+  margin: auto;
+  padding: 3rem 1.5rem;
+}
+a {
+  color: inherit;
+  text-underline-offset: 0.2em;
+}
+h1,
+h2 {
+  line-height: 1.2;
+}
+section {
+  margin-top: 2.5rem;
+}
+li {
+  margin-block: 0.75rem;
+}

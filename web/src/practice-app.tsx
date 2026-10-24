@@ -7,7 +7,6 @@ import {
   onCleanup,
   onMount,
 } from "solid-js";
-import { render } from "solid-js/web";
 import {
   Download,
   Eraser,
@@ -78,7 +77,7 @@ function isIPadDevice(): boolean {
   );
 }
 
-function App() {
+export default function PracticeApp() {
   const showsPencilNotice = isIPadDevice();
   const [loading, setLoading] = createSignal(true);
   const [documents, setDocuments] = createSignal<PracticeDocument[]>([]);
@@ -1237,21 +1236,5 @@ function App() {
         </p>
       </dialog>
     </main>
-  );
-}
-
-const root = document.querySelector<HTMLElement>("#app");
-if (!root) throw new Error("App root is missing.");
-render(() => <App />, root);
-
-if (import.meta.env.PROD && "serviceWorker" in navigator) {
-  const serviceWorkerUrl = `/app/sw.js?v=${__BUILD_ID__}`;
-  window.addEventListener(
-    "load",
-    () =>
-      void navigator.serviceWorker.register(serviceWorkerUrl, {
-        scope: "/app/",
-        updateViaCache: "none",
-      }),
   );
 }

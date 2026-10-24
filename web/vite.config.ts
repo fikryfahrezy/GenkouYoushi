@@ -1,9 +1,10 @@
 import { defineConfig } from "vite";
-import solid from "vite-plugin-solid";
+import { solidStart } from "@solidjs/start/config";
+import { nitro } from "nitro/vite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { licenseNotices } from "./license-notices";
+import { licenseNotices } from "./license-notices.ts";
 
 const notices = licenseNotices();
 
@@ -21,6 +22,12 @@ const ORT_RUNTIME_ASSETS = [
 ];
 const BUILD_ID = Date.now().toString(36);
 
+// Static files, the service worker, and notices belong to the browser build
+// only, not to the SSR environment that prerenders the pages.
+function isClient(environment: { name: string }): boolean {
+  return environment.name === "client";
+}
+
 function runtimeFile(filename: string): Buffer {
   return readFileSync(resolve("node_modules/onnxruntime-web/dist", filename));
 }
@@ -30,10 +37,12 @@ export default defineConfig({
     __BUILD_ID__: JSON.stringify(BUILD_ID),
   },
   plugins: [
-    solid(),
-    notices.main,
+    solidStart(),
+    nitro(),
+    { ...notices.main, applyToEnvironment: isClient },
     {
       name: "copy-onnx-wasm-runtime",
+      applyToEnvironment: isClient,
       configureServer(server) {
         server.middlewares.use((request, response, next) => {
           const asset = ORT_RUNTIME_ASSETS.find(
@@ -69,13 +78,11 @@ export default defineConfig({
     },
   ],
   worker: { plugins: () => [notices.worker()] },
-  build: {
-    rollupOptions: {
-      input: {
-        landing: resolve("index.html"),
-        app: resolve("app/index.html"),
-        licenses: resolve("licenses/index.html"),
-      },
+  nitro: {
+    preset: "static",
+    prerender: {
+      routes: ["/", "/app", "/licenses"],
+      failOnError: true,
     },
   },
   server: {
