@@ -1,56 +1,34 @@
-import { For, type JSX } from "solid-js";
+import { For, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import "../landing.css";
-
-type Step = {
-  number: string;
-  title: string;
-  description: string;
-};
-
-type StoryFact = {
-  value: string;
-  lines: [string, string];
-};
+import LandingReplica from "../landing-replica";
+import {
+  EI_STROKES,
+  STORY_CHAPTERS,
+  STORY_UNITS,
+  WRITTEN,
+  cameraAt,
+  clamp,
+  replicaAt,
+  sameState,
+  span,
+  type Rect,
+  type StoryTarget,
+} from "../landing-story";
 
 type Question = {
   question: string;
   answer: string;
-  open?: boolean;
 };
 
-const STEPS: Step[] = [
-  {
-    number: "一",
-    title: "Choose your paper",
-    description:
-      "Start with a standard 20 × 20 sheet or a compact 10 × 20 grid.",
-  },
-  {
-    number: "二",
-    title: "Find your character",
-    description:
-      "Type a kanji or recognize one from a photo to load its tracing guides and stroke order.",
-  },
-  {
-    number: "三",
-    title: "Write, refine, repeat",
-    description:
-      "Practice with tracing guides, adjust your tools, then save or export the result.",
-  },
-];
-
-const STORY_FACTS: StoryFact[] = [
-  { value: "200 / 400", lines: ["characters", "per sheet"] },
-  { value: "2", lines: ["writing tools", "plus an eraser"] },
-  { value: "∞", lines: ["fresh sheets", "for your practice"] },
-];
+const STAGE: Rect = { x: 0, y: 0, width: 1280, height: 800 };
+const FINALE = 12.3;
+const INK_STROKES = WRITTEN.length * EI_STROKES.length;
 
 const QUESTIONS: Question[] = [
   {
     question: "Do I need to create an account?",
     answer:
       "No. Open the app and start practicing immediately. Your sheets are stored locally in your current browser.",
-    open: true,
   },
   {
     question: "Can I use it on a tablet or phone?",
@@ -69,91 +47,307 @@ const QUESTIONS: Question[] = [
   },
 ];
 
-function Eyebrow(props: { light?: boolean; children: JSX.Element }) {
-  return (
-    <p class="eyebrow" classList={{ "eyebrow-light": props.light }}>
-      <span></span>
-      {props.children}
-    </p>
-  );
+function lerpRect(a: Rect, b: Rect, t: number): Rect {
+  const mix = (p: number, q: number) => p + (q - p) * t;
+  return {
+    x: mix(a.x, b.x),
+    y: mix(a.y, b.y),
+    width: mix(a.width, b.width),
+    height: mix(a.height, b.height),
+  };
 }
 
-function Brand(props: { caption?: boolean }) {
+// The part of the screen the camera frames, which shifts as the story moves
+// from the hero, into the captioned walkthrough, and out to the finale.
+function focusAt(u: number, width: number, height: number): Rect {
+  const narrow = width < 760;
+  const full = { x: 0, y: 0, width, height };
+  const intro = narrow
+    ? { x: 0, y: height * 0.5, width, height: height * 0.55 }
+    : {
+        x: width * 0.46,
+        y: height * 0.1,
+        width: width * 0.56,
+        height: height * 0.85,
+      };
+  const side = narrow
+    ? { x: 8, y: 64, width: width - 16, height: height * 0.56 - 64 }
+    : { x: width * 0.4, y: 84, width: width * 0.53, height: height - 140 };
+  const end = { x: 0, y: height * 0.5, width, height: height * 0.9 };
+  let rect = lerpRect(intro, full, span(u, 0, 0.9));
+  rect = lerpRect(rect, side, span(u, 1, 1.5));
+  rect = lerpRect(rect, full, span(u, 11.9, 12.4));
+  return lerpRect(rect, end, span(u, 12.4, 13.2));
+}
+
+function Brand() {
   return (
     <a class="brand" href="/" aria-label="Genkou Youshi home">
       <span class="brand-seal" lang="ja" aria-hidden="true">
         原
       </span>
-      {props.caption ? (
-        <span class="brand-name">
-          Genkou Youshi
-          <span class="brand-caption">JAPANESE HANDWRITING PRACTICE</span>
-        </span>
-      ) : (
-        <span>Genkou Youshi</span>
-      )}
+      <span class="brand-name">
+        Genkou Youshi
+        <span class="brand-caption">JAPANESE HANDWRITING PRACTICE</span>
+      </span>
     </a>
   );
 }
 
-function FeatureMark(props: { children: string }) {
-  return (
-    <span class="feature-mark" lang="ja" aria-hidden="true">
-      {props.children}
-    </span>
-  );
-}
+function Story(props: { onReady: (jump: (at: number) => void) => void }) {
+  let section!: HTMLElement;
+  let stage!: HTMLDivElement;
+  let rig!: HTMLDivElement;
+  let ring!: HTMLDivElement;
+  let cursor!: HTMLDivElement;
+  let nib!: HTMLDivElement;
+  let replica: HTMLDivElement | undefined;
 
-function SiteHeader() {
-  return (
-    <header class="site-header">
-      <div class="container header-inner">
-        <Brand caption />
-        <nav class="site-nav" aria-label="Main navigation">
-          <a href="#features">Features</a>
-          <a href="#how-it-works">How it works</a>
-          <a href="#faq">FAQ</a>
-        </nav>
-        <a class="button button-small button-ink" href="/app/">
-          Open the app
-          <span aria-hidden="true">↗</span>
-        </a>
-      </div>
-    </header>
-  );
-}
+  const [ready, setReady] = createSignal(false);
+  const [units, setUnits] = createSignal(0);
+  const [state, setState] = createSignal(replicaAt(0), { equals: sameState });
 
-function Hero() {
+  const active = createMemo(() =>
+    STORY_CHAPTERS.find(
+      (chapter) => units() >= chapter.start && units() < chapter.end,
+    ),
+  );
+  const heroOut = () => span(units(), 0.2, 0.75);
+  const finale = () => units() >= FINALE;
+  const progress = () => units() / STORY_UNITS;
+
+  let frame = 0;
+  let current = 0;
+  let reduced = false;
+  let visible = false;
+  let observer: IntersectionObserver | undefined;
+
+  function offsetIn(element: HTMLElement, root: HTMLElement) {
+    let x = 0;
+    let y = 0;
+    let node: HTMLElement | null = element;
+    while (node && node !== root) {
+      x += node.offsetLeft;
+      y += node.offsetTop;
+      node = node.offsetParent as HTMLElement | null;
+    }
+    return { x, y };
+  }
+
+  function measure(target: StoryTarget): Rect {
+    const element = replica?.querySelector<HTMLElement>(
+      `[data-target="${target}"]`,
+    );
+    if (!replica || !element) return STAGE;
+    const { x, y } = offsetIn(element, replica);
+    return { x, y, width: element.offsetWidth, height: element.offsetHeight };
+  }
+
+  function place(element: HTMLElement, target: StoryTarget | null, pad = 0) {
+    if (!target) {
+      element.style.opacity = "0";
+      return;
+    }
+    const rect = measure(target);
+    element.style.opacity = "1";
+    element.style.width = `${rect.width + pad * 2}px`;
+    element.style.height = `${rect.height + pad * 2}px`;
+    element.style.transform = `translate(${rect.x - pad}px, ${rect.y - pad}px)`;
+  }
+
+  // Follows the tip of the stroke being written, in replica coordinates.
+  function placeNib(ink: number) {
+    const index = Math.floor(ink);
+    const path =
+      ink > 0 && ink < INK_STROKES
+        ? replica?.querySelector<SVGPathElement>(
+            `[data-ink="${Math.floor(index / EI_STROKES.length)}-${index % EI_STROKES.length}"]`,
+          )
+        : null;
+    const cell = path?.ownerSVGElement?.parentElement;
+    const matrix = path?.getCTM();
+    if (!replica || !path || !cell || !matrix) {
+      nib.style.opacity = "0";
+      return;
+    }
+    const tip = path
+      .getPointAtLength((ink - index) * path.getTotalLength())
+      .matrixTransform(matrix);
+    // The strokes sit inside the cell's 8% inset; the cell's own slight
+    // rotation is small enough to leave out here.
+    const { x, y } = offsetIn(cell, replica);
+    const inset = cell.offsetWidth * 0.08;
+    nib.style.opacity = "1";
+    nib.style.transform = `translate(${x + inset + tip.x}px, ${y + inset + tip.y}px)`;
+  }
+
+  function scrollTarget(): number {
+    const top = section.getBoundingClientRect().top;
+    return clamp(-top / window.innerHeight, 0, STORY_UNITS);
+  }
+
+  function render() {
+    const target = scrollTarget();
+    current = reduced ? target : current + (target - current) * 0.12;
+    if (Math.abs(target - current) < 0.0005) current = target;
+    const u = current;
+    if (Math.abs(units() - u) > 0.004) setUnits(u);
+
+    const next = replicaAt(u);
+    setState(next);
+
+    // A hidden or unsized stage has nothing to frame yet.
+    if (!stage.clientWidth || !stage.clientHeight) {
+      frame = visible ? requestAnimationFrame(render) : 0;
+      return;
+    }
+    const focus = focusAt(u, stage.clientWidth, stage.clientHeight);
+    const camera = cameraAt(u, measure, STAGE, focus, reduced);
+    rig.style.transform =
+      `translate3d(${focus.x + focus.width / 2}px, ${focus.y + focus.height / 2}px, 0)` +
+      ` rotateX(${camera.rotateX}deg) rotateY(${camera.rotateY}deg)` +
+      ` skewY(${camera.skew}deg) scale(${camera.scale})` +
+      ` translate(${-camera.x}px, ${-camera.y}px)`;
+    rig.style.setProperty("--inverse", String(1 / camera.scale));
+    rig.style.opacity = String(1 - span(u, 12.6, 13.3) * 0.55);
+    place(ring, next.highlight, 8);
+    place(cursor, next.cursor);
+    cursor.classList.toggle("pressing", next.pressing);
+    placeNib(next.ink);
+
+    frame = visible ? requestAnimationFrame(render) : 0;
+  }
+
+  function start() {
+    if (!frame) frame = requestAnimationFrame(render);
+  }
+
+  function jump(at: number) {
+    const top = section.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({
+      top: top + at * window.innerHeight,
+      behavior: reduced ? "auto" : "smooth",
+    });
+  }
+
+  onMount(() => {
+    reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    current = scrollTarget();
+    observer = new IntersectionObserver(([entry]) => {
+      visible = Boolean(entry?.isIntersecting);
+      if (visible) start();
+    });
+    observer.observe(section);
+    visible = true;
+    render();
+    setReady(true);
+    props.onReady(jump);
+  });
+
+  onCleanup(() => {
+    observer?.disconnect();
+    if (frame) cancelAnimationFrame(frame);
+  });
+
   return (
-    <section class="hero">
-      <div class="hero-mark hero-mark-one" aria-hidden="true">
-        練
-      </div>
-      <div class="hero-mark hero-mark-two" aria-hidden="true">
-        習
-      </div>
-      <div class="container hero-grid">
-        <div class="hero-copy">
-          <Eyebrow>A quieter place to practice</Eyebrow>
-          <h1>
-            Write Japanese
-            <br />
-            <em>one square at a time.</em>
+    <section
+      ref={section}
+      class="story"
+      classList={{ ready: ready() }}
+      style={{ "--units": STORY_UNITS }}
+      aria-labelledby="hero-title"
+    >
+      <div ref={stage} class="stage">
+        <div class="grain" aria-hidden="true" />
+        <For each={STORY_CHAPTERS}>
+          {(chapter) => (
+            <span
+              class="ghost-kanji"
+              classList={{ active: active()?.id === chapter.id }}
+              lang="ja"
+              aria-hidden="true"
+            >
+              {chapter.kanji}
+            </span>
+          )}
+        </For>
+
+        <div ref={rig} class="rig">
+          <LandingReplica
+            ref={(element) => (replica = element)}
+            state={state()}
+          />
+          <div class="spotlight" aria-hidden="true">
+            <div ref={ring} class="ring" />
+          </div>
+          <div ref={cursor} class="cursor" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="26" height="26">
+              <path
+                d="M4 2l16 9.5-7 1.6 4.2 7.4-3 1.6-4.2-7.5L5 19z"
+                fill="#1f1c17"
+                stroke="#fbf7e8"
+                stroke-width="1.5"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+          <div ref={nib} class="nib" aria-hidden="true">
+            <svg viewBox="0 0 40 40" width="40" height="40">
+              <path
+                d="M2 38l3-9L30 4l6 6L11 35z"
+                fill="#2e454f"
+                stroke="#fbf7e8"
+                stroke-width="1.5"
+                stroke-linejoin="round"
+              />
+              <path d="M2 38l3-9 6 6z" fill="#1f1c17" />
+            </svg>
+          </div>
+        </div>
+        <div
+          class="veil"
+          style={{
+            opacity: span(units(), 1, 1.4) * (1 - span(units(), 11.9, 12.3)),
+          }}
+          aria-hidden="true"
+        />
+
+        <div
+          class="hero"
+          style={{
+            opacity: 1 - heroOut(),
+            transform: `translateY(${heroOut() * -60}px)`,
+            visibility: heroOut() >= 1 ? "hidden" : "visible",
+          }}
+        >
+          <p class="eyebrow">
+            <span lang="ja">原稿用紙</span> / A QUIETER PLACE TO PRACTICE
+          </p>
+          <h1 id="hero-title">
+            <span class="line">
+              <span>Write Japanese,</span>
+            </span>
+            <span class="line">
+              <em>one square</em>
+            </span>
+            <span class="line">
+              <em>at a time.</em>
+            </span>
           </h1>
-          <p class="hero-intro">
-            A focused handwriting workspace inspired by traditional manuscript
-            paper—complete with stroke-order references, drawing tools, and
-            sheets that stay on your device.
+          <p class="hero-lede">
+            A focused handwriting workspace on traditional manuscript paper,
+            with stroke-order guides, natural ink, and sheets that stay on your
+            device.
           </p>
           <div class="hero-actions">
-            <a class="button button-primary" href="/app/">
+            <a class="primary-button" href="/app/">
               Start practicing
               <span aria-hidden="true">→</span>
             </a>
-            <a class="text-link" href="#how-it-works">
-              See how it works
+            <button type="button" class="text-action" onClick={() => jump(1.5)}>
+              Watch it work
               <span aria-hidden="true">↓</span>
-            </a>
+            </button>
           </div>
           <ul class="hero-notes" aria-label="Product highlights">
             <li>No account needed</li>
@@ -161,330 +355,159 @@ function Hero() {
             <li>Works in your browser</li>
           </ul>
         </div>
-
-        <div
-          class="hero-visual"
-          aria-label="Preview of the Genkou Youshi practice workspace"
+        <p
+          class="scroll-cue"
+          style={{ opacity: 1 - span(units(), 0, 0.3) }}
+          aria-hidden="true"
         >
-          <div class="ink-orbit orbit-one" aria-hidden="true"></div>
-          <div class="ink-orbit orbit-two" aria-hidden="true"></div>
-          <figure class="app-window screenshot-window">
-            <img
-              src="/app-workspace.png"
-              alt="Genkou Youshi app showing a 20 by 20 manuscript sheet, writing tools, and the kanji reference panel"
-              width="1440"
-              height="1000"
-            />
-          </figure>
-        </div>
-      </div>
-    </section>
-  );
-}
+          SCROLL
+          <i />
+        </p>
 
-function TrustStrip() {
-  return (
-    <section class="trust-strip" aria-label="Key product qualities">
-      <div class="container trust-grid">
-        <div>
-          <span class="trust-number">01</span>
-          <strong>Traditional structure</strong>
-          <small>Authentic 200 &amp; 400 character grids</small>
+        <div class="captions">
+          <For each={STORY_CHAPTERS}>
+            {(chapter) => (
+              <article
+                class="caption"
+                classList={{ active: active()?.id === chapter.id }}
+                aria-labelledby={`chapter-${chapter.id}`}
+              >
+                <p class="eyebrow">
+                  <span lang="ja" aria-hidden="true">
+                    {chapter.kanji}
+                  </span>
+                  {chapter.eyebrow}
+                </p>
+                <h2 id={`chapter-${chapter.id}`} aria-label={chapter.title}>
+                  <For each={chapter.title.split(" ")}>
+                    {(word, index) => (
+                      <span
+                        class="word"
+                        style={{ "--i": index() }}
+                        aria-hidden="true"
+                      >
+                        <span>{word}</span>
+                      </span>
+                    )}
+                  </For>
+                </h2>
+                <p class="caption-body">{chapter.body}</p>
+              </article>
+            )}
+          </For>
         </div>
-        <div>
-          <span class="trust-number">02</span>
-          <strong>Modern convenience</strong>
-          <small>Draw, undo, save, and export</small>
-        </div>
-        <div>
-          <span class="trust-number">03</span>
-          <strong>Private by design</strong>
-          <small>Practice sheets remain in your browser</small>
-        </div>
-      </div>
-    </section>
-  );
-}
 
-function Features() {
-  return (
-    <section class="features section" id="features">
-      <div class="container">
-        <div class="section-heading centered-heading">
-          <Eyebrow>Everything you need</Eyebrow>
-          <h2>
-            Less setup.
-            <br />
-            <em>More writing.</em>
-          </h2>
-          <p>
-            Simple tools that keep your attention on the page, not the
-            interface.
-          </p>
-        </div>
-        <div class="feature-grid">
-          <article class="feature-card feature-card-large feature-guides">
-            <div class="feature-copy">
-              <FeatureMark>導</FeatureMark>
-              <h3>Guided practice</h3>
-              <p>
-                Choose any kanji, trace progressive guides across the page, and
-                open a stroke-by-stroke diagram whenever you need it.
-              </p>
-            </div>
-            <div class="guide-demo" aria-hidden="true">
-              <For each={[1, 2, 3, 4]}>
-                {(step) => (
-                  <div>
-                    <span>永</span>
-                    <i>{step}</i>
-                  </div>
-                )}
-              </For>
-            </div>
-          </article>
-          <article class="feature-card feature-tools">
-            <FeatureMark>筆</FeatureMark>
-            <h3>Natural writing tools</h3>
-            <p>
-              Write with a pen or pencil, then refine with the eraser. Adjust
-              line weight until every stroke feels right.
-            </p>
-            <div class="tool-strokes" aria-hidden="true">
-              <i></i>
-              <i></i>
-              <i></i>
-            </div>
-          </article>
-          <article class="feature-card feature-recognize">
-            <FeatureMark>認</FeatureMark>
-            <h3>Recognize from a photo</h3>
-            <p>
-              Not sure what a character is? Upload a photo, frame the character,
-              and choose from the closest matches.
-            </p>
-            <div class="recognize-demo" aria-hidden="true">
-              <span>本</span>
-              <span>木</span>
-              <span>休</span>
-              <small>matches</small>
-            </div>
-          </article>
-          <article class="feature-card feature-library">
-            <div class="feature-copy">
-              <FeatureMark>冊</FeatureMark>
-              <h3>Your own practice library</h3>
-              <p>
-                Create as many sheets as you need. They save automatically in
-                your browser and are ready when you return.
-              </p>
-            </div>
-            <div class="library-demo" aria-hidden="true">
-              <div>
-                <b>永</b>
-                <span>
-                  <strong>永 practice</strong>
-                  <small>400 characters</small>
+        <nav
+          class="chapters"
+          classList={{ shown: Boolean(active()) }}
+          aria-label="Walkthrough chapters"
+        >
+          <span class="chapters-track" aria-hidden="true">
+            <span style={{ transform: `scaleY(${progress()})` }} />
+          </span>
+          <For each={STORY_CHAPTERS}>
+            {(chapter) => (
+              <button
+                type="button"
+                classList={{ active: active()?.id === chapter.id }}
+                aria-current={active()?.id === chapter.id ? "step" : undefined}
+                aria-label={chapter.title}
+                onClick={() => jump(chapter.start + 0.45)}
+              >
+                <span lang="ja" aria-hidden="true">
+                  {chapter.kanji}
                 </span>
-              </div>
-              <div>
-                <b>水</b>
-                <span>
-                  <strong>水 practice</strong>
-                  <small>200 characters</small>
-                </span>
-              </div>
-            </div>
-          </article>
-          <article class="feature-card feature-export">
-            <FeatureMark>印</FeatureMark>
-            <h3>Export as PDF</h3>
-            <p>
-              Keep a clean record, print your work, or share a finished practice
-              sheet in just a few clicks.
-            </p>
-            <div class="pdf-stamp" aria-hidden="true">
-              PDF
-              <span>↗</span>
-            </div>
-          </article>
-        </div>
-      </div>
-    </section>
-  );
-}
+              </button>
+            )}
+          </For>
+        </nav>
+        <span class="mobile-progress" aria-hidden="true">
+          <span style={{ transform: `scaleX(${progress()})` }} />
+        </span>
 
-function Steps() {
-  return (
-    <section class="steps section" id="how-it-works">
-      <div class="container steps-layout">
-        <div class="steps-intro">
-          <Eyebrow light>Your practice ritual</Eyebrow>
+        <div class="finale" classList={{ active: finale() }}>
+          <p class="eyebrow">YOUR NEXT PAGE IS BLANK</p>
           <h2>
-            From reference
-            <br />
-            to rhythm.
+            <span class="line">
+              <span>Ready when</span>
+            </span>
+            <span class="line">
+              <em>you are.</em>
+            </span>
           </h2>
-          <p>
-            Open a fresh sheet and begin. Genkou Youshi keeps the process
-            intentionally simple.
-          </p>
-          <a class="button button-primary" href="/app/">
+          <a
+            class="primary-button"
+            href="/app/"
+            tabindex={finale() ? undefined : -1}
+          >
             Open a fresh sheet
             <span aria-hidden="true">→</span>
           </a>
-        </div>
-        <ol class="step-list">
-          <For each={STEPS}>
-            {(step) => (
-              <li>
-                <span class="step-number">{step.number}</span>
-                <div>
-                  <h3>{step.title}</h3>
-                  <p>{step.description}</p>
-                </div>
-              </li>
-            )}
-          </For>
-        </ol>
-      </div>
-    </section>
-  );
-}
-
-function PaperStory() {
-  return (
-    <section class="paper-story section">
-      <div class="container story-grid">
-        <div class="story-visual" aria-hidden="true">
-          <div class="story-sheet story-sheet-back"></div>
-          <div class="story-sheet story-sheet-front">
-            <span class="vertical-copy">書くことで、心を整える。</span>
-            <strong>学</strong>
-            <i class="red-mark"></i>
-          </div>
-        </div>
-        <div class="story-copy">
-          <Eyebrow>A page with purpose</Eyebrow>
-          <h2>
-            Made for the
-            <br />
-            <em>practice of writing.</em>
-          </h2>
-          <p>
-            Genkō yōshi—literally “manuscript paper”—has long given Japanese
-            writing a measured rhythm. Each square holds one character, making
-            spacing and composition visible.
-          </p>
-          <p>
-            This digital version preserves that structure while adding the tools
-            a modern learner needs. No clutter. No streaks to maintain. Just a
-            considered space to return to your writing.
-          </p>
-          <dl class="story-facts">
-            <For each={STORY_FACTS}>
-              {(fact) => (
-                <div>
-                  <dt>{fact.value}</dt>
-                  <dd>
-                    {fact.lines[0]}
-                    <br />
-                    {fact.lines[1]}
-                  </dd>
-                </div>
-              )}
-            </For>
-          </dl>
+          <p>Pick a character. Fill one square, then the next.</p>
         </div>
       </div>
     </section>
-  );
-}
-
-function Faq() {
-  return (
-    <section class="faq section" id="faq">
-      <div class="container faq-layout">
-        <div class="section-heading">
-          <Eyebrow>Good to know</Eyebrow>
-          <h2>
-            Questions,
-            <br />
-            <em>answered.</em>
-          </h2>
-        </div>
-        <div class="faq-list">
-          <For each={QUESTIONS}>
-            {(item) => (
-              <details open={item.open}>
-                <summary>
-                  {item.question}
-                  <span aria-hidden="true">+</span>
-                </summary>
-                <p>{item.answer}</p>
-              </details>
-            )}
-          </For>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function FinalCta() {
-  return (
-    <section class="final-cta">
-      <div class="container final-content">
-        <span class="final-seal" aria-hidden="true">
-          原
-        </span>
-        <Eyebrow light>Your next page is blank</Eyebrow>
-        <h2>
-          Ready when
-          <br />
-          <em>you are.</em>
-        </h2>
-        <p>Pick a character. Take your time. Fill one square, then the next.</p>
-        <a class="button button-paper" href="/app/">
-          Start practicing
-          <span aria-hidden="true">→</span>
-        </a>
-      </div>
-    </section>
-  );
-}
-
-function SiteFooter() {
-  return (
-    <footer class="site-footer">
-      <div class="container footer-main">
-        <Brand />
-        <nav aria-label="Footer navigation">
-          <a href="/licenses/">Credits &amp; licenses ↗</a>
-          <a href="/app/">Open app ↗</a>
-        </nav>
-      </div>
-    </footer>
   );
 }
 
 export default function Landing() {
+  let jump: (at: number) => void = () => {};
   return (
     <>
       <a class="skip-link" href="#main">
         Skip to content
       </a>
-      <SiteHeader />
+      <header class="site-header">
+        <Brand />
+        <nav class="site-nav" aria-label="Main navigation">
+          <button type="button" onClick={() => jump(1.5)}>
+            How it works
+          </button>
+          <a href="#faq">FAQ</a>
+        </nav>
+        <a class="header-open" href="/app/">
+          Open the app
+          <span aria-hidden="true">↗</span>
+        </a>
+      </header>
       <main id="main">
-        <Hero />
-        <TrustStrip />
-        <Features />
-        <Steps />
-        <PaperStory />
-        <Faq />
-        <FinalCta />
+        <Story onReady={(next) => (jump = next)} />
+        <section class="faq container" id="faq" aria-labelledby="faq-title">
+          <div>
+            <p class="eyebrow">GOOD TO KNOW</p>
+            <h2 id="faq-title">
+              Questions,
+              <br />
+              <em>answered.</em>
+            </h2>
+          </div>
+          <div class="faq-list">
+            <For each={QUESTIONS}>
+              {(item) => (
+                <details>
+                  <summary>
+                    {item.question}
+                    <span aria-hidden="true">+</span>
+                  </summary>
+                  <p>{item.answer}</p>
+                </details>
+              )}
+            </For>
+            <a class="primary-button" href="/app/">
+              Start practicing
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
+        </section>
       </main>
-      <SiteFooter />
+      <footer class="site-footer container">
+        <span lang="ja">原稿用紙 · GENKOU YOUSHI</span>
+        <span>JAPANESE, ONE SQUARE AT A TIME.</span>
+        <nav aria-label="Footer navigation">
+          <a href="/licenses/">CREDITS &amp; LICENSES ↗</a>
+          <a href="/app/">OPEN APP ↗</a>
+        </nav>
+      </footer>
     </>
   );
 }
