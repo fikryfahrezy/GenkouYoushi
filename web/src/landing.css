@@ -289,9 +289,7 @@ h2 em {
   height: 800px;
   transform-origin: 0 0;
   opacity: 0;
-  box-shadow:
-    0 0 0 1px rgba(31, 28, 23, 0.18),
-    0 50px 120px rgba(53, 48, 39, 0.28);
+  will-change: transform;
 }
 
 .story:not(.ready) .rig {
@@ -811,6 +809,9 @@ h2 em {
     auto,
     100% 30px,
     auto;
+  box-shadow:
+    0 0 0 1px rgba(31, 28, 23, 0.18),
+    0 50px 120px rgba(53, 48, 39, 0.28);
   color: var(--ink);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   text-align: left;
