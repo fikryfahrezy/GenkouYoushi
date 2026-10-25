@@ -296,12 +296,15 @@ h2 em {
   visibility: hidden;
 }
 
+/* The overlays scale their borders with --inverse every frame; their own
+   layers keep that from repainting the whole replica underneath. */
 .spotlight {
   position: absolute;
   inset: 0;
   z-index: 3;
   overflow: hidden;
   pointer-events: none;
+  will-change: transform;
 }
 
 .ring {
@@ -350,6 +353,7 @@ h2 em {
   z-index: 4;
   opacity: 0;
   pointer-events: none;
+  will-change: transform;
 }
 
 .cursor {
@@ -420,6 +424,7 @@ h2 em {
   inset: 0;
   z-index: 1;
   pointer-events: none;
+  will-change: opacity;
   background: linear-gradient(
     90deg,
     var(--ground) 0%,
