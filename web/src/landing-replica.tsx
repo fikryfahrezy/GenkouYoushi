@@ -63,6 +63,38 @@ function cellStyle(column: number, row: number, rows = 1, columns = 1) {
   };
 }
 
+// The sheet's grid as two static paths: column outlines with cell rules, and
+// the faint quarter guides. One SVG rasterizes far faster than per-column
+// gradients while the camera rescales the whole sheet.
+const GRID = (() => {
+  const top = rowY(0);
+  const bottom = rowY(PAPER.rows);
+  let rules = "";
+  let guides = "";
+  for (let column = 0; column < PAPER.columns; column += 1) {
+    const left = columnX(column);
+    const right = left + PAPER.cell;
+    const middle = left + PAPER.cell / 2;
+    rules += `M${left} ${top}H${right}V${bottom}H${left}Z`;
+    guides += `M${middle} ${top}V${bottom}`;
+    for (let row = 0; row < PAPER.rows; row += 1) {
+      const y = rowY(row);
+      if (row > 0) rules += `M${left} ${y}H${right}`;
+      guides += `M${left} ${y + PAPER.cell / 2}H${right}`;
+    }
+  }
+  return { rules, guides };
+})();
+
+function Grid() {
+  return (
+    <svg class="r-grid" aria-hidden="true">
+      <path d={GRID.guides} stroke-width="0.4" />
+      <path d={GRID.rules} stroke-width="0.72" />
+    </svg>
+  );
+}
+
 // One kanji drawn as KanjiVG strokes; `drawn` is a fractional stroke count.
 function Strokes(props: {
   drawn: number;
@@ -101,11 +133,7 @@ function Paper(props: { state: ReplicaState }) {
         <span lang="ja">原 稿 用 紙</span>
         <span lang="ja">400 字 ・ 縦書き</span>
       </div>
-      <Index each={Array.from({ length: PAPER.columns })}>
-        {(_, column) => (
-          <span class="r-column" style={cellStyle(column, 0, PAPER.rows)} />
-        )}
-      </Index>
+      <Grid />
       <Index each={Array.from({ length: strokes })}>
         {(_, row) => (
           <span

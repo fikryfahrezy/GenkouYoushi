@@ -1096,27 +1096,18 @@ h2 em {
     sans-serif;
 }
 
-.r-column {
+.r-grid {
   position: absolute;
-  border: 0.72px solid rgba(107, 135, 110, 0.8);
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0 23.3px,
-      rgba(107, 135, 110, 0.8) 23.3px 24px
-    ),
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0 11.8px,
-      rgba(107, 135, 110, 0.25) 11.8px 12.2px,
-      transparent 12.2px 24px
-    ),
-    linear-gradient(
-      to right,
-      transparent calc(50% - 0.2px),
-      rgba(107, 135, 110, 0.25) calc(50% - 0.2px) calc(50% + 0.2px),
-      transparent calc(50% + 0.2px)
-    );
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: rgba(107, 135, 110, 0.8);
+}
+
+.r-grid path:first-child {
+  stroke: rgba(107, 135, 110, 0.25);
 }
 
 .r-cell {
